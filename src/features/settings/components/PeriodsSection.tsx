@@ -5,6 +5,7 @@ import { CalendarRange, Plus, Trash2 } from 'lucide-react';
 import type { Cycle, Period, PeriodKind } from '@/types';
 import { cycleLabels, periodKindLabels } from '@/i18n/fr';
 import { useSchoolData } from '@/lib/store/school-data';
+import { useAudit } from '@/lib/audit/use-audit';
 import { labelOptions, labelOptionsFor } from '@/lib/status';
 import { periodKindsFor } from '@/lib/school-levels/capabilities';
 import { createId } from '@/lib/utils';
@@ -33,6 +34,7 @@ import { SettingsSection } from './SettingsSection';
 export function PeriodsSection() {
   const toast = useToast();
   const { config, actions } = useSchoolData();
+  const audit = useAudit();
 
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<PeriodValues>({
@@ -60,6 +62,13 @@ export function PeriodsSection() {
 
     const period: Period = { id: createId('per'), ...parsed.data };
     actions.updateConfig({ periods: [...config.periods, period] });
+    audit({
+      action: 'settings.periods.update',
+      resourceType: 'Période',
+      resourceId: period.id,
+      resourceLabel: period.label,
+      detail: 'Période ajoutée : elle devient sélectionnable pour les bulletins et les évaluations.',
+    });
     setErrors({});
     setOpen(false);
     setDraft({ ...draft, label: '' });
@@ -69,6 +78,13 @@ export function PeriodsSection() {
   function remove(period: Period) {
     actions.updateConfig({
       periods: config.periods.filter((item) => item.id !== period.id),
+    });
+    audit({
+      action: 'settings.periods.update',
+      resourceType: 'Période',
+      resourceId: period.id,
+      resourceLabel: period.label,
+      detail: 'Période retirée : les documents déjà émis pour cette période restent inchangés.',
     });
     toast.success(`Période « ${period.label} » retirée.`);
   }

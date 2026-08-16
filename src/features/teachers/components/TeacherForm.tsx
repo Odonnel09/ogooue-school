@@ -22,6 +22,7 @@ import {
   Select,
   Textarea,
   useToast,
+  DatePicker,
 } from '@/components/ui';
 import { teacherMessages as m } from '../messages';
 import { teacherSchema, type TeacherFormValues } from '../schemas';
@@ -272,9 +273,8 @@ export function TeacherForm({ teacher }: { teacher?: Teacher }) {
           required
           error={errors.startDate?.message}
         >
-          <Input
+          <DatePicker
             id="startDate"
-            type="date"
             invalid={Boolean(errors.startDate)}
             {...register('startDate')}
           />

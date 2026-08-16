@@ -10,6 +10,10 @@ import { CYCLES } from '@/types';
 import { LEVEL_CAPABILITIES } from '@/lib/school-levels/capabilities';
 import { SCALES } from '@/lib/grading/scales';
 import type { GradingConfig } from '@/lib/grading/types';
+import {
+  DEFAULT_MESSAGING_RULES,
+  type MessagingRules,
+} from '@/lib/messaging/policy';
 import { DEFAULT_PERIODS } from './academic';
 
 /**
@@ -58,6 +62,8 @@ export interface TenantConfig {
   };
   /** Signature du chef d'établissement, apposée sur les bulletins. */
   signature: SignatureConfig;
+  /** Règles d'échange de la messagerie interne. */
+  messaging: MessagingRules;
 }
 
 /** Configuration de notation par défaut, déduite de la matrice de capacités. */
@@ -182,6 +188,7 @@ export const DEFAULT_TENANT_CONFIG: TenantConfig = {
     card: defaultTemplate('Carte scolaire'),
   },
   signature: { ...EMPTY_SIGNATURE, signerName: 'M. Ndong Mba' },
+  messaging: DEFAULT_MESSAGING_RULES,
   enrollment: {
     requiredDocuments: [
       'Acte de naissance',

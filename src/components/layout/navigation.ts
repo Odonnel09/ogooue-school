@@ -10,6 +10,8 @@ import {
   GraduationCap,
   LayoutDashboard,
   Library,
+  MessagesSquare,
+  ScrollText,
   Settings,
   UserCircle,
   Users,
@@ -133,8 +135,13 @@ export const NAV_ENTRIES: NavEntry[] = [
   // Modules déclarés par la matrice, écrans à construire en phase B.
 
   { key: 'documents', icon: FileText, href: '/documents', permissions: [], implemented: false },
-  { key: 'messages', icon: Bell, href: '/messages', permissions: [], implemented: false },
-  { key: 'audit', icon: FileText, href: '/audit', permissions: ['audit.read'], implemented: false },
+  {
+    key: 'messages',
+    icon: MessagesSquare,
+    href: '/messages',
+    permissions: ['messages.read'],
+    implemented: true,
+  },
   {
     key: 'reports',
     icon: FileBadge,
@@ -147,6 +154,13 @@ export const NAV_ENTRIES: NavEntry[] = [
     icon: Wallet,
     href: '/finance',
     permissions: ['payments.read'],
+    implemented: true,
+  },
+  {
+    key: 'audit',
+    icon: ScrollText,
+    href: '/audit',
+    permissions: ['audit.read'],
     implemented: true,
   },
   {

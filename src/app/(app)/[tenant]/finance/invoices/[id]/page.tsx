@@ -10,6 +10,7 @@ import { paymentMethodLabels, ui } from '@/i18n/fr';
 import { Can } from '@/lib/auth/session';
 import { useHref } from '@/lib/hooks';
 import { useSchoolData } from '@/lib/store/school-data';
+import { useAudit } from '@/lib/audit/use-audit';
 import { classLabel, studentName } from '@/lib/selectors';
 import { invoiceStatusMeta, labelOptions, paymentStatusMeta } from '@/lib/status';
 import { formatMoney } from '@/lib/money';
@@ -28,6 +29,7 @@ import {
   StatusBadge,
   Textarea,
   useToast,
+  DatePicker,
 } from '@/components/ui';
 import {
   balanceOf,
@@ -48,6 +50,7 @@ export default function InvoiceDetailPage({
   const href = useHref();
   const toast = useToast();
   const { invoices, payments, students, classes, actions } = useSchoolData();
+  const audit = useAudit();
 
   const [formOpen, setFormOpen] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -120,6 +123,15 @@ export default function InvoiceDetailPage({
     };
 
     actions.payments.create(payment);
+    audit({
+      action: 'finance.payment.record',
+      resourceType: 'Règlement',
+      resourceId: payment.id,
+      resourceLabel: `${payment.reference} — ${invoice!.number}`,
+      detail: `${formatMoney(payment.amount)} par ${paymentMethodLabels[method]}, statut ${
+        byProvider ? 'en attente de confirmation du prestataire' : 'confirmé'
+      }.`,
+    });
     setFormOpen(false);
     setAmount('');
     setProviderReference('');
@@ -131,6 +143,13 @@ export default function InvoiceDetailPage({
 
   function cancelInvoice() {
     actions.invoices.update(invoice!.id, { status: 'annulee' });
+    audit({
+      action: 'finance.invoice.cancel',
+      resourceType: 'Facture',
+      resourceId: invoice!.id,
+      resourceLabel: `${invoice!.number} — ${student ? studentName(student) : 'élève inconnu'}`,
+      detail: `Facture annulée alors qu'il restait ${formatMoney(balance)} à régler.`,
+    });
     setConfirmCancel(false);
     toast.success(m.invoice.toasts.cancelled);
   }
@@ -336,9 +355,8 @@ export default function InvoiceDetailPage({
           </Field>
 
           <Field label={m.invoice.fields.receivedAt} htmlFor="payment-date">
-            <Input
+            <DatePicker
               id="payment-date"
-              type="date"
               value={receivedAt}
               onChange={(event) => setReceivedAt(event.target.value)}
             />

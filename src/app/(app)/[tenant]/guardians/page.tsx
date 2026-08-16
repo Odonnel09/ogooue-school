@@ -16,6 +16,7 @@ import type { Guardian } from '@/types';
 import { guardianStatusLabels, ui } from '@/i18n/fr';
 import { Can, useSession } from '@/lib/auth/session';
 import { useSchoolData } from '@/lib/store/school-data';
+import { useAudit } from '@/lib/audit/use-audit';
 import { useHref, useSimulatedLoading } from '@/lib/hooks';
 import {
   classLabel,
@@ -65,6 +66,7 @@ export default function GuardiansPage() {
   const ready = useSimulatedLoading();
   const { guardians, guardianLinks, students, classes, actions } =
     useSchoolData();
+  const audit = useAudit();
   const { isYearWritable } = useSession();
 
   const [search, setSearch] = useState('');
@@ -135,6 +137,13 @@ export default function GuardiansPage() {
 
   function archive(guardian: Guardian) {
     actions.guardians.update(guardian.id, { status: 'archive' });
+    audit({
+      action: 'guardians.archive',
+      resourceType: 'Tuteur',
+      resourceId: guardian.id,
+      resourceLabel: guardianName(guardian),
+      detail: 'Tuteur archivé : son accès au portail famille est suspendu.',
+    });
     setToArchive(null);
     toast.success(m.detail.archived(guardianName(guardian)));
   }

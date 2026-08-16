@@ -3,6 +3,7 @@
 import { Info } from 'lucide-react';
 import type { DocumentTemplate, ReportColumnKey } from '@/types';
 import { useSchoolData } from '@/lib/store/school-data';
+import { useAudit } from '@/lib/audit/use-audit';
 import {
   AssetUpload,
   Card,
@@ -44,6 +45,7 @@ export function TemplateEditor({
 }) {
   const toast = useToast();
   const { config, actions } = useSchoolData();
+  const audit = useAudit();
 
   const template = config.templates[variant];
 
@@ -53,6 +55,21 @@ export function TemplateEditor({
         ...config.templates,
         [variant]: { ...template, ...changes },
       },
+    });
+  }
+
+  /**
+   * Seuls les dépôts de fichiers sont journalisés : tracer chaque frappe de
+   * clavier noierait le journal sous des lignes sans valeur d'enquête.
+   */
+  function patchAsset(changes: Partial<DocumentTemplate>, label: string) {
+    patch(changes);
+    audit({
+      action: 'settings.template.update',
+      resourceType: variant === 'report' ? 'Modèle de bulletin' : 'Modèle de carte',
+      resourceId: `template-${variant}`,
+      resourceLabel: template.documentTitle,
+      detail: label,
     });
   }
 
@@ -83,7 +100,14 @@ export function TemplateEditor({
             label={m.templates.fields.background}
             hint={m.templates.fields.backgroundHint}
             value={template.background}
-            onChange={(background) => patch({ background })}
+            onChange={(background) =>
+              patchAsset(
+                { background },
+                background.dataUrl
+                  ? 'Fond de page remplacé.'
+                  : 'Fond de page retiré.',
+              )
+            }
             onError={toast.error}
             previewClassName="w-24 h-16"
           />
@@ -111,7 +135,12 @@ export function TemplateEditor({
             label={m.templates.fields.logo}
             hint={m.templates.fields.logoHint}
             value={template.logo}
-            onChange={(logo) => patch({ logo })}
+            onChange={(logo) =>
+              patchAsset(
+                { logo },
+                logo.dataUrl ? 'Logo remplacé.' : 'Logo retiré.',
+              )
+            }
             maxWidth={400}
             onError={toast.error}
           />
@@ -121,7 +150,12 @@ export function TemplateEditor({
               label={m.templates.fields.stamp}
               hint={m.templates.fields.stampHint}
               value={template.stamp}
-              onChange={(stamp) => patch({ stamp })}
+              onChange={(stamp) =>
+                patchAsset(
+                  { stamp },
+                  stamp.dataUrl ? 'Cachet remplacé.' : 'Cachet retiré.',
+                )
+              }
               maxWidth={400}
               onError={toast.error}
             />
@@ -227,7 +261,14 @@ export function TemplateEditor({
           label={m.templates.fields.reference}
           hint={m.templates.fields.referenceHint}
           value={template.referenceFile}
-          onChange={(referenceFile) => patch({ referenceFile })}
+          onChange={(referenceFile) =>
+            patchAsset(
+              { referenceFile },
+              referenceFile.dataUrl
+                ? 'Modèle de référence déposé.'
+                : 'Modèle de référence retiré.',
+            )
+          }
           onError={toast.error}
         />
 

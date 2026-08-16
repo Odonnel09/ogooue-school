@@ -11,14 +11,18 @@ import {
 } from 'react';
 import {
   ANNOUNCEMENTS,
+  AUDIT_ENTRIES,
   ATTENDANCE_SHEETS,
   CLASSES,
   CLASS_SUBJECTS,
+  CONVERSATIONS,
   ENROLLMENT_APPLICATIONS,
   EVALUATIONS,
   GUARDIANS,
   GUARDIAN_LINKS,
   INVOICES,
+  MESSAGES,
+  PARTICIPANTS,
   PAYMENTS,
   SCHEDULE_SLOTS,
   STUDENTS,
@@ -28,8 +32,10 @@ import {
 import { DEFAULT_TENANT_CONFIG, type TenantConfig } from '@/data/tenant-config';
 import type {
   Announcement,
+  AuditEntry,
   AttendanceSheet,
   ClassSubject,
+  Conversation,
   EnrollmentApplication,
   Evaluation,
   Grade,
@@ -37,6 +43,8 @@ import type {
   Guardian,
   GuardianLink,
   Invoice,
+  Message,
+  Participant,
   Payment,
   ReportCard,
   SchoolClass,
@@ -74,6 +82,17 @@ interface SchoolDataContextValue {
   payments: Payment[];
   reports: ReportCard[];
   announcements: Announcement[];
+  /** Annuaire de la messagerie — fixe tant que la gestion des comptes n'existe pas. */
+  participants: Participant[];
+  conversations: Conversation[];
+  messages: Message[];
+  /**
+   * Notifications déjà consultées. Seul l'état de lecture est stocké : les
+   * notifications elles-mêmes se déduisent de l'état de l'établissement.
+   */
+  readNotificationIds: string[];
+  /** Journal d'audit — en lecture seule pour les composants. */
+  auditLog: AuditEntry[];
   actions: {
     students: Crud<Student>;
     enrollments: Crud<EnrollmentApplication>;
@@ -89,6 +108,18 @@ interface SchoolDataContextValue {
     payments: Crud<Payment>;
     reports: Crud<ReportCard>;
     announcements: Crud<Announcement>;
+    conversations: Crud<Conversation>;
+    /** Ajoute un message à un fil et remonte celui-ci en tête de liste. */
+    sendMessage: (message: Message) => void;
+    /** Marque tous les messages d'un fil comme lus par un participant. */
+    markConversationRead: (conversationId: string, participantId: string) => void;
+    /** Enregistre une ou plusieurs notifications comme consultées. */
+    markNotificationsRead: (ids: string[]) => void;
+    /**
+     * Ajoute une entrée au journal d'audit. Aucune API de modification ni de
+     * suppression n'est exposée : une trace ne se réécrit pas.
+     */
+    recordAudit: (entry: AuditEntry) => void;
     /** Met à jour la configuration de l'établissement (Paramètres). */
     updateConfig: (patch: Partial<TenantConfig>) => void;
     /** Rétablit la configuration livrée par défaut. */
@@ -132,6 +163,46 @@ export function SchoolDataProvider({ children }: { children: ReactNode }) {
   const [reports, setReports] = useState<ReportCard[]>([]);
   const [announcements, setAnnouncements] =
     useState<Announcement[]>(ANNOUNCEMENTS);
+  const [conversations, setConversations] =
+    useState<Conversation[]>(CONVERSATIONS);
+  const [messages, setMessages] = useState<Message[]>(MESSAGES);
+  const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
+  const [auditLog, setAuditLog] = useState<AuditEntry[]>(AUDIT_ENTRIES);
+
+  const sendMessage = useCallback((message: Message) => {
+    setMessages((previous) => [...previous, message]);
+    setConversations((previous) =>
+      previous.map((conversation) =>
+        conversation.id === message.conversationId
+          ? { ...conversation, lastMessageAt: message.sentAt }
+          : conversation,
+      ),
+    );
+  }, []);
+
+  const markConversationRead = useCallback(
+    (conversationId: string, participantId: string) => {
+      setMessages((previous) =>
+        previous.map((message) =>
+          message.conversationId === conversationId &&
+          !message.readBy.includes(participantId)
+            ? { ...message, readBy: [...message.readBy, participantId] }
+            : message,
+        ),
+      );
+    },
+    [],
+  );
+
+  const markNotificationsRead = useCallback((ids: string[]) => {
+    setReadNotificationIds((previous) =>
+      Array.from(new Set([...previous, ...ids])),
+    );
+  }, []);
+
+  const recordAudit = useCallback((entry: AuditEntry) => {
+    setAuditLog((previous) => [entry, ...previous]);
+  }, []);
 
   /**
    * Reprise de la configuration enregistrée localement.
@@ -223,12 +294,26 @@ export function SchoolDataProvider({ children }: { children: ReactNode }) {
       payments: createCrud(setPayments),
       reports: createCrud(setReports),
       announcements: createCrud(setAnnouncements),
+      conversations: createCrud(setConversations),
+      sendMessage,
+      markConversationRead,
+      markNotificationsRead,
+      recordAudit,
       updateConfig,
       resetConfig,
       saveAttendanceSheet,
       setGrade,
     }),
-    [updateConfig, resetConfig, saveAttendanceSheet, setGrade],
+    [
+      sendMessage,
+      markConversationRead,
+      markNotificationsRead,
+      recordAudit,
+      updateConfig,
+      resetConfig,
+      saveAttendanceSheet,
+      setGrade,
+    ],
   );
 
   const value = useMemo<SchoolDataContextValue>(
@@ -249,6 +334,11 @@ export function SchoolDataProvider({ children }: { children: ReactNode }) {
       payments,
       reports,
       announcements,
+      participants: PARTICIPANTS,
+      conversations,
+      messages,
+      readNotificationIds,
+      auditLog,
       actions,
     }),
     [
@@ -268,6 +358,10 @@ export function SchoolDataProvider({ children }: { children: ReactNode }) {
       payments,
       reports,
       announcements,
+      conversations,
+      messages,
+      readNotificationIds,
+      auditLog,
       actions,
     ],
   );

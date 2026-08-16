@@ -60,6 +60,33 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
+/*
+ * Ouverture des panneaux flottants (listes déroulantes, calendriers).
+ * Un déplacement de 4 px suffit à signaler d'où sort le panneau ; au-delà,
+ * l'animation retarde la lecture au lieu de l'aider.
+ */
+@keyframes popover-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.popover-enter {
+  animation: popover-enter 140ms cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .popover-enter {
+    animation: none;
+  }
+}
+
 /* Impression : n'imprimer que la zone marquée `.print-area` */
 @media print {
   body * {

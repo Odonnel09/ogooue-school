@@ -8,6 +8,7 @@ import { guardianRelationLabels, ui } from '@/i18n/fr';
 import { Can, useSession } from '@/lib/auth/session';
 import { useHref } from '@/lib/hooks';
 import { useSchoolData } from '@/lib/store/school-data';
+import { useAudit } from '@/lib/audit/use-audit';
 import {
   classLabel,
   guardianName,
@@ -41,6 +42,7 @@ export default function GuardianDetailPage({
   const toast = useToast();
   const { guardians, guardianLinks, students, classes, actions } =
     useSchoolData();
+  const audit = useAudit();
   const { isYearWritable } = useSession();
 
   const [confirmArchive, setConfirmArchive] = useState(false);
@@ -92,6 +94,15 @@ export default function GuardianDetailPage({
     actions.guardians.update(guardian.id, {
       status: isArchived ? 'actif' : 'archive',
     });
+    audit({
+      action: 'guardians.archive',
+      resourceType: 'Tuteur',
+      resourceId: guardian.id,
+      resourceLabel: fullName,
+      detail: isArchived
+        ? 'Tuteur réactivé : il retrouve l’accès au portail famille.'
+        : 'Tuteur archivé : son accès au portail famille est suspendu.',
+    });
     setConfirmArchive(false);
     toast.success(
       isArchived ? m.detail.restored(fullName) : m.detail.archived(fullName),
@@ -100,6 +111,13 @@ export default function GuardianDetailPage({
 
   function unlink(link: GuardianLink) {
     actions.guardianLinks.remove(link.id);
+    audit({
+      action: 'guardians.unlink',
+      resourceType: 'Rattachement tuteur',
+      resourceId: link.id,
+      resourceLabel: fullName,
+      detail: 'Rattachement à un élève supprimé : le tuteur perd la visibilité sur ce dossier.',
+    });
     setToUnlink(null);
     toast.success(m.detail.unlinked);
   }

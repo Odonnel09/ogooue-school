@@ -19,6 +19,7 @@ import type { Teacher } from '@/types';
 import { teacherStatusLabels } from '@/i18n/fr';
 import { labelOptions, teacherStatusMeta } from '@/lib/status';
 import { useSchoolData } from '@/lib/store/school-data';
+import { useAudit } from '@/lib/audit/use-audit';
 import { useHref, useSimulatedLoading } from '@/lib/hooks';
 import { classLabel, teacherName } from '@/lib/selectors';
 import {
@@ -57,6 +58,7 @@ export default function TeachersPage() {
   const toast = useToast();
   const ready = useSimulatedLoading();
   const { teachers, subjects, classes, actions } = useSchoolData();
+  const audit = useAudit();
 
   const [search, setSearch] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('');
@@ -106,6 +108,13 @@ export default function TeachersPage() {
 
   function archiveTeacher(teacher: Teacher) {
     actions.teachers.update(teacher.id, { status: 'archive' });
+    audit({
+      action: 'teachers.archive',
+      resourceType: 'Enseignant',
+      resourceId: teacher.id,
+      resourceLabel: teacherName(teacher),
+      detail: 'Enseignant archivé : son compte perd l’accès et ses affectations sont libérées.',
+    });
     setToArchive(null);
     toast.success(`${teacherName(teacher)} a été archivé.`);
   }

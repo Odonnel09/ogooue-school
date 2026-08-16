@@ -10,7 +10,8 @@ import {
 } from 'react';
 import { ACADEMIC_YEARS, CURRENT_ACADEMIC_YEAR } from '@/data/academic';
 import { DEFAULT_ROLE_ID, ROLES, permissionsOfRole } from '@/data/roles';
-import type { AcademicYear } from '@/types';
+import { resolveMembership } from '@/lib/tenant/membership';
+import type { AcademicYear, TenantMembership } from '@/types';
 import { hasAnyPermission, hasPermission, type Permission } from './permissions';
 
 /**
@@ -22,6 +23,8 @@ import { hasAnyPermission, hasPermission, type Permission } from './permissions'
  * par les composants (`can`, `canAny`) ne changera pas.
  */
 interface SessionContextValue {
+  /** Établissement actif et rôle qui y est détenu. */
+  membership: TenantMembership | null;
   roleId: string;
   setRoleId: (roleId: string) => void;
   permissions: Permission[];
@@ -35,9 +38,31 @@ interface SessionContextValue {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
-export function SessionProvider({ children }: { children: ReactNode }) {
-  const [roleId, setRoleId] = useState(DEFAULT_ROLE_ID);
+export function SessionProvider({
+  tenantSlug,
+  children,
+}: {
+  /** Slug déjà vérifié par le layout : le provider ne le remet pas en cause. */
+  tenantSlug: string;
+  children: ReactNode;
+}) {
+  const membership = resolveMembership(tenantSlug);
+
+  const [roleId, setRoleId] = useState(
+    () => membership?.roleId ?? DEFAULT_ROLE_ID,
+  );
   const [academicYearId, setAcademicYearId] = useState(CURRENT_ACADEMIC_YEAR);
+
+  /**
+   * Le rôle suit l'établissement : on n'est pas administrateur partout.
+   * Ajustement pendant le rendu plutôt qu'effet — le sélecteur de rôle de
+   * démonstration reste libre ensuite, pour éprouver l'interface.
+   */
+  const [lastSlug, setLastSlug] = useState(tenantSlug);
+  if (lastSlug !== tenantSlug) {
+    setLastSlug(tenantSlug);
+    setRoleId(membership?.roleId ?? DEFAULT_ROLE_ID);
+  }
 
   const permissions = useMemo(() => permissionsOfRole(roleId), [roleId]);
 
@@ -61,6 +86,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<SessionContextValue>(
     () => ({
+      membership,
       roleId,
       setRoleId,
       permissions,
@@ -70,7 +96,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setAcademicYearId,
       isYearWritable: academicYear.status === 'active' || academicYear.status === 'draft',
     }),
-    [roleId, permissions, can, canAny, academicYear],
+    [membership, roleId, permissions, can, canAny, academicYear],
   );
 
   return (

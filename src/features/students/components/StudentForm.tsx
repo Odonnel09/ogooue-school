@@ -11,6 +11,7 @@ import { guardianName, linksOfStudent } from '@/lib/selectors';
 import { useHref } from '@/lib/hooks';
 import { useCapabilities } from '@/lib/school-levels/use-capabilities';
 import { useSchoolData } from '@/lib/store/school-data';
+import { useAudit } from '@/lib/audit/use-audit';
 import { labelOptions } from '@/lib/status';
 import { classOptions, levelOptions, yearOptions } from '@/lib/options';
 import { avatarUrl, createId, todayIso } from '@/lib/utils';
@@ -25,6 +26,7 @@ import {
   Select,
   Textarea,
   useToast,
+  DatePicker,
 } from '@/components/ui';
 import { studentMessages as m } from '../messages';
 import {
@@ -68,6 +70,7 @@ export function StudentForm({ student }: { student?: Student }) {
   const toast = useToast();
   const { students, classes, guardians, guardianLinks, config, actions } =
     useSchoolData();
+  const audit = useAudit();
 
   /** Rattachement principal existant, s'il y en a un. */
   const currentLink = student
@@ -205,6 +208,18 @@ export function StudentForm({ student }: { student?: Student }) {
         }
       }
 
+      audit({
+        action: isEdit ? 'students.update' : 'students.create',
+        resourceType: 'Élève',
+        resourceId: payload.id,
+        resourceLabel: `${payload.firstName} ${payload.lastName} (${payload.matricule})`,
+        detail: isDraft
+          ? 'Dossier enregistré en brouillon : il reste incomplet.'
+          : `Dossier ${isEdit ? 'modifié' : 'créé'} et rattaché à la classe ${
+              payload.classId || 'non définie'
+            }.`,
+      });
+
       if (isEdit) {
         actions.students.update(payload.id, payload);
         toast.success(m.form.toasts.updated(payload.firstName));
@@ -327,9 +342,8 @@ export function StudentForm({ student }: { student?: Student }) {
           required
           error={errors.birthDate?.message}
         >
-          <Input
+          <DatePicker
             id="birthDate"
-            type="date"
             invalid={Boolean(errors.birthDate)}
             {...register('birthDate')}
           />

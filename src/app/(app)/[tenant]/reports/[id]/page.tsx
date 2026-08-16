@@ -18,6 +18,8 @@ import { ui } from '@/i18n/fr';
 import { Can, useSession } from '@/lib/auth/session';
 import { useHref } from '@/lib/hooks';
 import { useSchoolData } from '@/lib/store/school-data';
+import { useAudit } from '@/lib/audit/use-audit';
+import { studentName } from '@/lib/selectors';
 import { reportStatusMeta } from '@/lib/status';
 import { formatDate } from '@/lib/utils';
 import {
@@ -50,6 +52,7 @@ export default function ReportDetailPage({
   const toast = useToast();
   const { reports, students, config, actions } = useSchoolData();
   const { isYearWritable } = useSession();
+  const audit = useAudit();
 
   const report = reports.find((item) => item.id === id);
   const [comment, setComment] = useState(report?.councilComment ?? '');
@@ -129,6 +132,13 @@ export default function ReportDetailPage({
         applied,
       ),
     });
+    audit({
+      action: 'reports.sign',
+      resourceType: 'Bulletin',
+      resourceId: report!.id,
+      resourceLabel: student ? studentName(student) : report!.studentId,
+      detail: `Signé par ${applied.signerName} (${applied.signerRole}), en remplacement de la signature d'établissement.`,
+    });
     setSignOpen(false);
     toast.success(m.detail.toasts.signed);
   }
@@ -140,6 +150,13 @@ export default function ReportDetailPage({
       signatureOverride: null,
       snapshot: buildSnapshot(student, context, comment, REFERENCE_DATE, null),
     });
+    audit({
+      action: 'reports.sign',
+      resourceType: 'Bulletin',
+      resourceId: report!.id,
+      resourceLabel: student ? studentName(student) : report!.studentId,
+      detail: 'Signature propre au bulletin retirée : la signature d’établissement s’applique de nouveau.',
+    });
     setSignOpen(false);
     setSignDataUrl('');
     toast.success(m.detail.toasts.signatureReset);
@@ -149,6 +166,13 @@ export default function ReportDetailPage({
     actions.reports.update(report!.id, {
       status: 'publie',
       publishedAt: REFERENCE_DATE,
+    });
+    audit({
+      action: 'reports.publish',
+      resourceType: 'Bulletin',
+      resourceId: report!.id,
+      resourceLabel: student ? studentName(student) : report!.studentId,
+      detail: 'Bulletin publié : contenu, modèle et signature sont figés et visibles par la famille.',
     });
     setConfirmPublish(false);
     toast.success(m.detail.toasts.published);

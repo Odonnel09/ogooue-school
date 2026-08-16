@@ -13,11 +13,13 @@ import {
   UserCheck,
   UserRoundX,
   Users,
+  Upload,
 } from 'lucide-react';
 import type { Student, StudentStatus } from '@/types';
 import { studentStatusLabels, ui } from '@/i18n/fr';
 import { Can, useSession } from '@/lib/auth/session';
 import { useSchoolData } from '@/lib/store/school-data';
+import { useAudit } from '@/lib/audit/use-audit';
 import { useHref, useSimulatedLoading } from '@/lib/hooks';
 import {
   classLabel,
@@ -76,6 +78,7 @@ export default function StudentsPage() {
   const ready = useSimulatedLoading();
   const { students, classes, guardians, guardianLinks, config, actions } =
     useSchoolData();
+  const audit = useAudit();
   const { can, isYearWritable } = useSession();
 
   const [search, setSearch] = useState('');
@@ -153,15 +156,31 @@ export default function StudentsPage() {
 
   function archiveStudent(student: Student) {
     actions.students.update(student.id, { status: 'archive' });
+    audit({
+      action: 'students.archive',
+      resourceType: 'Élève',
+      resourceId: student.id,
+      resourceLabel: `${studentName(student)} (${student.matricule})`,
+      detail: 'Dossier archivé : l’élève sort des effectifs sans être supprimé.',
+    });
     setSelected((previous) => previous.filter((id) => id !== student.id));
     setToArchive(null);
     toast.success(m.detail.archived(studentName(student)));
   }
 
   function archiveSelection() {
-    selected.forEach((id) =>
-      actions.students.update(id, { status: 'archive' as StudentStatus }),
-    );
+    selected.forEach((id) => {
+      actions.students.update(id, { status: 'archive' as StudentStatus });
+      const student = students.find((item) => item.id === id);
+      if (!student) return;
+      audit({
+        action: 'students.archive',
+        resourceType: 'Élève',
+        resourceId: student.id,
+        resourceLabel: `${studentName(student)} (${student.matricule})`,
+        detail: `Archivage groupé de ${selected.length} dossier(s).`,
+      });
+    });
     toast.success(
       `${selected.length} élève${selected.length > 1 ? 's ont' : ' a'} été archivé${selected.length > 1 ? 's' : ''}.`,
     );
@@ -193,6 +212,14 @@ export default function StudentsPage() {
         studentStatusLabels[student.status],
       ]),
     );
+    audit({
+      action: 'students.export',
+      resourceType: 'Liste d’élèves',
+      resourceId: 'students-csv',
+      resourceLabel: `${visible.length} élève(s)`,
+      detail:
+        'Export CSV de la liste filtrée : le fichier contient des données personnelles.',
+    });
     toast.success(`Export de ${visible.length} élèves généré.`);
   }
 
@@ -211,6 +238,11 @@ export default function StudentsPage() {
               >
                 <Download size={16} aria-hidden="true" /> {m.list.export}
               </Button>
+            </Can>
+            <Can permission="students.create" requiresWritableYear>
+              <LinkButton href={href('/students/import')} variant="outline">
+                <Upload size={16} aria-hidden="true" /> {m.list.import}
+              </LinkButton>
             </Can>
             <Can permission="students.create" requiresWritableYear>
               <LinkButton href={href('/students/new')}>

@@ -4,14 +4,8 @@ import {
   type ReactNode,
 } from 'react';
 import { AlertCircle } from 'lucide-react';
-import type { SelectOption } from '@/types';
 import { cn } from '@/lib/utils';
-
-const CONTROL_BASE =
-  'block w-full py-3 px-4 bg-slate-50 border border-transparent rounded-xl text-sm text-slate-900 placeholder-slate-400 focus-visible:border-brand-500 focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-brand-500/10 transition-all duration-300 outline-none disabled:opacity-60 disabled:cursor-not-allowed';
-
-const CONTROL_INVALID =
-  'border-red-300 bg-red-50/50 focus-visible:border-red-500 focus-visible:ring-red-500/10';
+import { CONTROL_BASE, CONTROL_INVALID } from './field-styles';
 
 /** Groupe de champs avec titre de section, comme dans les fiches du dashboard. */
 export function FormSection({
@@ -129,47 +123,6 @@ export function Input({ invalid, className, id, ...props }: InputProps) {
       className={cn(CONTROL_BASE, invalid && CONTROL_INVALID, className)}
       {...props}
     />
-  );
-}
-
-type SelectProps = ComponentPropsWithRef<'select'> & {
-  options: SelectOption[];
-  placeholder?: string;
-  invalid?: boolean;
-};
-
-const CHEVRON =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")";
-
-export function Select({
-  options,
-  placeholder,
-  invalid,
-  className,
-  id,
-  ...props
-}: SelectProps) {
-  return (
-    <select
-      id={id}
-      aria-invalid={invalid || undefined}
-      aria-describedby={id && invalid ? `${id}-error` : undefined}
-      className={cn(
-        CONTROL_BASE,
-        'appearance-none bg-[length:1rem] bg-[right_1rem_center] bg-no-repeat pr-10 cursor-pointer',
-        invalid && CONTROL_INVALID,
-        className,
-      )}
-      style={{ backgroundImage: CHEVRON }}
-      {...props}
-    >
-      {placeholder && <option value="">{placeholder}</option>}
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
   );
 }
 

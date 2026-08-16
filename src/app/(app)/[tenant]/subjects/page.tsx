@@ -9,6 +9,7 @@ import type { Subject } from '@/types';
 import { cycleLabels, subjectStatusLabels } from '@/i18n/fr';
 import { labelOptions, subjectStatusMeta } from '@/lib/status';
 import { useSchoolData } from '@/lib/store/school-data';
+import { useAudit } from '@/lib/audit/use-audit';
 import { useHref, useSimulatedLoading } from '@/lib/hooks';
 import { classesOfSubject, levelLabel, teacherLabel } from '@/lib/selectors';
 import { useCapabilities } from '@/lib/school-levels/use-capabilities';
@@ -47,6 +48,7 @@ export default function SubjectsPage() {
   const toast = useToast();
   const ready = useSimulatedLoading();
   const { subjects, teachers, classSubjects, actions, config } = useSchoolData();
+  const audit = useAudit();
   const capabilities = useCapabilities();
 
   const [search, setSearch] = useState('');
@@ -95,6 +97,13 @@ export default function SubjectsPage() {
 
   function archiveSubject(subject: Subject) {
     actions.subjects.update(subject.id, { status: 'archivee' });
+    audit({
+      action: 'subjects.archive',
+      resourceType: 'Matière',
+      resourceId: subject.id,
+      resourceLabel: subject.name,
+      detail: 'Matière archivée : elle n’est plus proposée aux nouvelles évaluations.',
+    });
     setToArchive(null);
     toast.success(`La matière ${subject.name} a été archivée.`);
   }

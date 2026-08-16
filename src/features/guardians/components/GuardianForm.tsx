@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { guardianStatusLabels, ui } from '@/i18n/fr';
 import { useHref } from '@/lib/hooks';
 import { useSchoolData } from '@/lib/store/school-data';
+import { useAudit } from '@/lib/audit/use-audit';
 import { labelOptions } from '@/lib/status';
 import { createId } from '@/lib/utils';
 import type { Guardian } from '@/types';
@@ -44,6 +45,7 @@ export function GuardianForm({ guardian }: { guardian?: Guardian }) {
   const href = useHref();
   const toast = useToast();
   const { actions } = useSchoolData();
+  const audit = useAudit();
   const [submitting, setSubmitting] = useState(false);
 
   const {
@@ -61,6 +63,13 @@ export function GuardianForm({ guardian }: { guardian?: Guardian }) {
 
     setTimeout(() => {
       const fullName = `${payload.firstName} ${payload.lastName}`.trim();
+      audit({
+        action: isEdit ? 'guardians.update' : 'guardians.create',
+        resourceType: 'Tuteur',
+        resourceId: payload.id,
+        resourceLabel: fullName,
+        detail: `Fiche ${isEdit ? 'modifiée' : 'créée'} — contact ${payload.phone || 'non renseigné'}.`,
+      });
       if (isEdit) {
         actions.guardians.update(payload.id, payload);
         toast.success(m.form.toasts.updated(fullName));

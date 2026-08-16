@@ -15,6 +15,7 @@ import { CURRENT_USER } from '@/data/academic';
 import type { AttendanceRecord, AttendanceStatus } from '@/types';
 import { attendanceStatusMeta } from '@/lib/status';
 import { useSchoolData } from '@/lib/store/school-data';
+import { useAudit } from '@/lib/audit/use-audit';
 import { useHref } from '@/lib/hooks';
 import { attendanceStats, classLabel, studentName } from '@/lib/selectors';
 import { cn, createId, formatLongDate, todayIso } from '@/lib/utils';
@@ -30,6 +31,7 @@ import {
   PageContainer,
   PageHeader,
   StatCard,
+  DatePicker,
 } from '@/components/ui';
 import { useToast } from '@/components/ui';
 
@@ -59,6 +61,7 @@ export default function AttendanceSheetPage({
   const href = useHref();
   const toast = useToast();
   const { classes, students, sheets, actions } = useSchoolData();
+  const audit = useAudit();
 
   const [date, setDate] = useState(todayIso);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
@@ -140,6 +143,13 @@ export default function AttendanceSheetPage({
         takenBy: CURRENT_USER.fullName,
         savedAt: new Date().toISOString(),
       });
+      audit({
+        action: 'attendance.save',
+        resourceType: 'Feuille de présence',
+        resourceId: `${classId}-${date}`,
+        resourceLabel: `${classLabel(classes, classId)} — ${formatLongDate(date)}`,
+        detail: `${stats.absent} absence(s), ${stats.retard} retard(s), ${stats.rate}% de présence.`,
+      });
       setSaving(false);
       toast.success(
         `Feuille de présence du ${formatLongDate(date)} enregistrée (${stats.rate}% de présence).`,
@@ -198,9 +208,8 @@ export default function AttendanceSheetPage({
       <Card className="p-3 sm:p-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
           <Field label="Date de l’appel" htmlFor="attendance-date">
-            <Input
+            <DatePicker
               id="attendance-date"
-              type="date"
               value={date}
               onChange={(event) => setDate(event.target.value)}
             />

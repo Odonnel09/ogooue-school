@@ -315,6 +315,32 @@ export const settingsMessages = {
       'Fiches des enseignants, matières couvertes et classes affectées.',
   },
 
+  messaging: {
+    title: 'Messagerie',
+    description:
+      'Règles d’échange entre les familles, les enseignants et l’administration.',
+    warning:
+      'Ce filtrage est appliqué à l’interface : les correspondants interdits n’apparaissent pas dans la liste. La règle devra être rejouée côté serveur — un navigateur ne décide pas de qui parle à qui.',
+    matrixTitle: 'Qui peut écrire à qui',
+    matrixHint:
+      'Lisez chaque ligne comme un expéditeur et chaque colonne comme un destinataire. Cliquez sur une case pour ouvrir ou fermer l’échange.',
+    fromColumn: 'Expéditeur',
+    allowed: 'Autorisé',
+    blocked: 'Interdit',
+    optionsTitle: 'Options d’échange',
+    options: {
+      guardiansMayInitiate: 'Les familles peuvent ouvrir une conversation',
+      guardiansMayInitiateHint:
+        'Décoché, les parents ne peuvent que répondre aux fils ouverts par l’établissement.',
+      broadcastRestricted: 'Diffusion réservée à l’administration',
+      broadcastRestrictedHint:
+        'Une diffusion s’adresse à plusieurs destinataires à la fois, sans qu’ils se voient entre eux.',
+      attachments: 'Pièces jointes autorisées',
+      attachmentsHint:
+        'Les justificatifs médicaux et autorisations transitent souvent par ce canal.',
+    },
+  },
+
   comingSoon: {
     badge: 'Étape ultérieure',
     action: 'Voir le plan de développement',

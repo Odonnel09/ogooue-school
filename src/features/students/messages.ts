@@ -6,6 +6,7 @@ export const studentMessages = {
       'Consultez, filtrez et gérez les dossiers des élèves de l’établissement.',
     add: 'Ajouter un élève',
     export: 'Exporter',
+    import: 'Importer',
     tableTitle: 'Liste des élèves',
     searchPlaceholder: 'Rechercher par nom, prénom ou matricule...',
     emptyTitle: 'Aucun élève trouvé',

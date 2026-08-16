@@ -9,6 +9,7 @@ import { SCALES } from '@/lib/grading/scales';
 import { gradingConfigSchema } from '@/lib/grading/config.schema';
 import type { GradingConfig } from '@/lib/grading/types';
 import { useSchoolData } from '@/lib/store/school-data';
+import { useAudit } from '@/lib/audit/use-audit';
 import { labelOptionsFor } from '@/lib/status';
 import {
   Badge,
@@ -37,6 +38,7 @@ const ABSENCE_OPTIONS = [
 export function GradingSection() {
   const toast = useToast();
   const { config, actions } = useSchoolData();
+  const audit = useAudit();
 
   const cycles = config.activeCycles;
   const [cycle, setCycle] = useState<Cycle>(cycles[0]);
@@ -86,6 +88,13 @@ export function GradingSection() {
     setTimeout(() => {
       actions.updateConfig({
         gradingSystems: { ...config.gradingSystems, [cycle]: draft },
+      });
+      audit({
+        action: 'settings.grading.update',
+        resourceType: 'Configuration',
+        resourceId: `grading-${cycle}`,
+        resourceLabel: `Notation — ${cycleLabels[cycle]}`,
+        detail: `Barème ${draft.scale}, seuil de réussite ${draft.passMark}/20, arrondi ${draft.rounding}.`,
       });
       setSaving(false);
       toast.success(m.saved);

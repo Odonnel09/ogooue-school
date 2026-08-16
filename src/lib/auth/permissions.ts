@@ -30,6 +30,14 @@ export const PERMISSIONS = [
   'users.manage',
   'settings.manage',
   'audit.read',
+  /*
+   * `GEMINI.md` subordonne la messagerie aux permissions de l'utilisateur
+   * (l. 103) et aux règles de l'établissement (l. 115). La liste de la
+   * spécification est donnée à titre d'exemple (« des permissions comme ») :
+   * ces deux entrées la complètent sans la contredire.
+   */
+  'messages.read',
+  'messages.send',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];

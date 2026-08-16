@@ -12,6 +12,7 @@ import {
 } from '@/i18n/fr';
 import { LEVEL_CAPABILITIES } from '@/lib/school-levels/capabilities';
 import { useSchoolData } from '@/lib/store/school-data';
+import { useAudit } from '@/lib/audit/use-audit';
 import { cn } from '@/lib/utils';
 import { Badge, Button, Card, useToast } from '@/components/ui';
 import { settingsMessages as m } from '../messages';
@@ -20,6 +21,7 @@ import { SettingsSection } from './SettingsSection';
 export function LevelsSection() {
   const toast = useToast();
   const { config, actions } = useSchoolData();
+  const audit = useAudit();
 
   const active = config.activeCycles;
 
@@ -36,6 +38,15 @@ export function LevelsSection() {
       : [...CYCLES.filter((item) => active.includes(item) || item === cycle)];
 
     actions.updateConfig({ activeCycles: next });
+    audit({
+      action: 'settings.levels.toggle',
+      resourceType: 'Configuration',
+      resourceId: `cycle-${cycle}`,
+      resourceLabel: `Cycle ${cycleLabels[cycle]}`,
+      detail: isActive
+        ? `Cycle désactivé : ses menus, champs et barèmes disparaissent de l’application.`
+        : `Cycle activé : ses menus, champs et barèmes deviennent disponibles.`,
+    });
     toast.success(
       isActive
         ? `${cycleLabels[cycle]} désactivé : ses écrans disparaissent de la navigation.`

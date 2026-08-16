@@ -19,6 +19,7 @@ import {
   Select,
   Textarea,
   useToast,
+  DatePicker,
 } from '@/components/ui';
 import { announcementMessages as m } from '../messages';
 import { announcementSchema, type AnnouncementFormValues } from '../schemas';
@@ -203,9 +204,8 @@ export function AnnouncementForm({
           htmlFor="ann-published"
           error={errors.publishedAt?.message}
         >
-          <Input
+          <DatePicker
             id="ann-published"
-            type="date"
             invalid={Boolean(errors.publishedAt)}
             {...register('publishedAt')}
           />
@@ -216,9 +216,8 @@ export function AnnouncementForm({
           htmlFor="ann-expires"
           error={errors.expiresAt?.message}
         >
-          <Input
+          <DatePicker
             id="ann-expires"
-            type="date"
             invalid={Boolean(errors.expiresAt)}
             {...register('expiresAt')}
           />

@@ -124,6 +124,8 @@ export const TIME_SLOTS: string[] = [
 
 /** Utilisateur connecté simulé (affiché dans l'en-tête). */
 export const CURRENT_USER = {
+  /** Identifiant de participant : sert de « moi » dans la messagerie. */
+  id: 'prt-admin',
   name: 'M. Ndong',
   role: 'Admin',
   fullName: 'Serge Ndong',

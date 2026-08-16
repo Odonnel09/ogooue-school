@@ -3,7 +3,11 @@ import type {
   AnnouncementAudience,
   AnnouncementStatus,
   AttendanceStatus,
+  AuditAction,
+  AuditDomain,
+  AuditSeverity,
   ClassStatus,
+  ConversationKind,
   Cycle,
   EnrollmentStatus,
   InvoiceStatus,
@@ -17,6 +21,7 @@ import type {
   GradingScale,
   GuardianRelation,
   GuardianStatus,
+  ParticipantKind,
   PeriodKind,
   ContractType,
   ScheduleStatus,
@@ -163,6 +168,70 @@ export const reportStatusLabels: Record<ReportCardStatus, string> = {
   brouillon: 'Non généré',
   genere: 'Généré',
   publie: 'Publié',
+};
+
+export const auditSeverityLabels: Record<AuditSeverity, string> = {
+  info: 'Courante',
+  sensitive: 'Sensible',
+};
+
+export const auditDomainLabels: Record<AuditDomain, string> = {
+  settings: 'Configuration',
+  students: 'Élèves',
+  guardians: 'Parents & tuteurs',
+  enrollments: 'Inscriptions',
+  classes: 'Classes',
+  subjects: 'Matières',
+  teachers: 'Enseignants',
+  attendance: 'Présences',
+  grades: 'Notes',
+  reports: 'Bulletins',
+  finance: 'Finances',
+  announcements: 'Annonces',
+};
+
+export const auditActionLabels: Record<AuditAction, string> = {
+  'settings.profile.update': 'Modification des informations générales',
+  'settings.levels.toggle': 'Activation ou désactivation d’un cycle',
+  'settings.grading.update': 'Modification du système de notation',
+  'settings.periods.update': 'Modification des périodes scolaires',
+  'settings.enrollment.update': 'Modification du formulaire d’inscription',
+  'settings.fees.update': 'Modification de la grille tarifaire',
+  'settings.template.update': 'Modification d’un gabarit de document',
+  'settings.signature.update': 'Modification de la signature d’établissement',
+  'settings.messaging.update': 'Modification des règles de messagerie',
+
+  'students.create': 'Création d’un élève',
+  'students.update': 'Modification d’un élève',
+  'students.archive': 'Archivage d’un élève',
+  'students.import': 'Import d’élèves depuis un fichier',
+  'students.export': 'Export de la liste des élèves',
+  'guardians.create': 'Création d’un tuteur',
+  'guardians.update': 'Modification d’un tuteur',
+  'guardians.archive': 'Archivage d’un tuteur',
+  'guardians.unlink': 'Détachement d’un tuteur',
+
+  'enrollments.submit': 'Dépôt d’un dossier d’inscription',
+  'enrollments.validate': 'Validation d’un dossier',
+  'enrollments.reject': 'Refus d’un dossier',
+  'enrollments.enroll': 'Inscription d’un élève',
+
+  'attendance.save': 'Enregistrement d’une feuille de présence',
+  'classes.archive': 'Archivage d’une classe',
+  'subjects.archive': 'Archivage d’une matière',
+  'teachers.archive': 'Archivage d’un enseignant',
+
+  'grades.validate': 'Validation des notes',
+  'grades.publish': 'Publication des résultats',
+  'grades.reopen': 'Réouverture de la saisie',
+  'grades.correct': 'Correction d’une note verrouillée',
+
+  'reports.generate': 'Génération de bulletins',
+  'reports.publish': 'Publication d’un bulletin',
+  'reports.sign': 'Signature d’un bulletin',
+
+  'finance.payment.record': 'Enregistrement d’un règlement',
+  'finance.invoice.cancel': 'Annulation d’une facture',
 };
 
 export const teacherStatusLabels: Record<TeacherStatus, string> = {
@@ -316,9 +385,26 @@ export const permissionLabels: Record<Permission, string> = {
   'users.manage': 'Gérer les utilisateurs',
   'settings.manage': 'Administrer les paramètres',
   'audit.read': 'Consulter le journal d’audit',
+  'messages.read': 'Consulter la messagerie',
+  'messages.send': 'Envoyer des messages',
+};
+
+/** Nature d'un correspondant de la messagerie. */
+export const participantKindLabels: Record<ParticipantKind, string> = {
+  administration: 'Administration',
+  enseignant: 'Enseignant',
+  parent: 'Parent',
+  eleve: 'Élève',
+};
+
+export const conversationKindLabels: Record<ConversationKind, string> = {
+  direct: 'Échange direct',
+  groupe: 'Groupe',
+  diffusion: 'Diffusion',
 };
 
 /** Chaînes des primitives d'interface et libellés d'accessibilité. */
+
 export const ui = {
   brand: 'Ogooué School',
   search: 'Rechercher...',
@@ -345,6 +431,16 @@ export const ui = {
   selectAll: 'Tout sélectionner',
   noSelection: 'Aucune sélection',
   noOption: 'Aucune option disponible.',
+  selectPlaceholder: 'Sélectionner…',
+  searchOption: 'Rechercher une option…',
+  openCalendar: 'Ouvrir le calendrier',
+  previousMonth: 'Mois précédent',
+  nextMonth: 'Mois suivant',
+  previousYear: 'Année précédente',
+  nextYear: 'Année suivante',
+  today: 'Aujourd’hui',
+  clearDate: 'Effacer',
+  chooseMonth: 'Choisir le mois et l’année',
   results: (count: number) => `${count} résultat${count > 1 ? 's' : ''}`,
   activeFilters: (count: number) =>
     `${count} filtre${count > 1 ? 's' : ''} actif${count > 1 ? 's' : ''}`,

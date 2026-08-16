@@ -1,6 +1,7 @@
 import {
   ANNOUNCEMENT_STATUS_TONES,
   ATTENDANCE_STATUS_TONES,
+  AUDIT_SEVERITY_TONES,
   CLASS_STATUS_TONES,
   ENROLLMENT_STATUS_TONES,
   EVALUATION_STATUS_TONES,
@@ -17,6 +18,7 @@ import type {
   AcademicYearStatus,
   AnnouncementStatus,
   AttendanceStatus,
+  AuditSeverity,
   BadgeTone,
   ClassStatus,
   EnrollmentStatus,
@@ -35,6 +37,7 @@ import {
   academicYearStatusLabels,
   announcementStatusLabels,
   attendanceStatusLabels,
+  auditSeverityLabels,
   classStatusLabels,
   enrollmentStatusLabels,
   evaluationStatusLabels,
@@ -121,6 +124,11 @@ export const paymentStatusMeta = build<PaymentStatus>(
 export const reportStatusMeta = build<ReportCardStatus>(
   REPORT_STATUS_TONES,
   reportStatusLabels,
+);
+
+export const auditSeverityMeta = build<AuditSeverity>(
+  AUDIT_SEVERITY_TONES,
+  auditSeverityLabels,
 );
 
 export const announcementStatusMeta = build<AnnouncementStatus>(

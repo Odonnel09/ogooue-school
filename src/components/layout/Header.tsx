@@ -3,13 +3,21 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Search, Bell, MessageSquare, ChevronDown, Menu, X } from 'lucide-react';
+import { Search, ChevronDown, Menu, X } from 'lucide-react';
 import { ACADEMIC_YEARS, CURRENT_USER } from '@/data/academic';
+import { useSchoolData } from '@/lib/store/school-data';
+import { unreadConversations } from '@/features/messages/queries';
+import {
+  MessagesButton,
+  NotificationBell,
+} from '@/features/notifications/components/NotificationPanel';
 import { academicYearStatusLabels, ui } from '@/i18n/fr';
 import { ROLES, useSession } from '@/lib/auth/session';
 import { useHref } from '@/lib/hooks';
 import { Avatar } from '@/components/ui/Avatar';
 import { ActionMenu } from '@/components/ui/Dropdown';
+import { SelectShell } from '@/components/ui/Select';
+import { TenantSwitcher } from './TenantSwitcher';
 import { useToast } from '@/components/ui/Toast';
 
 export function Header({ onOpenNav }: { onOpenNav: () => void }) {
@@ -18,6 +26,13 @@ export function Header({ onOpenNav }: { onOpenNav: () => void }) {
   const router = useRouter();
   const toast = useToast();
   const { roleId, setRoleId, academicYear, setAcademicYearId } = useSession();
+  const { conversations, messages } = useSchoolData();
+
+  const unreadThreads = unreadConversations(
+    conversations,
+    messages,
+    CURRENT_USER.id,
+  ).length;
 
   return (
     <header className="bg-white sticky top-0 z-20 border-b border-slate-100 shrink-0">
@@ -32,8 +47,11 @@ export function Header({ onOpenNav }: { onOpenNav: () => void }) {
           <Menu size={22} />
         </button>
 
+        {/* Établissement actif — un utilisateur peut en desservir plusieurs. */}
+        <TenantSwitcher />
+
         {/* Barre de recherche (masquée sur petit écran) */}
-        <div className="flex-1 max-w-xl hidden sm:block">
+        <div className="flex-1 max-w-xl hidden md:block">
           <div className="relative group">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-slate-400 group-focus-within:text-brand-500 transition-colors" />
@@ -46,7 +64,7 @@ export function Header({ onOpenNav }: { onOpenNav: () => void }) {
           </div>
         </div>
 
-        <div className="flex-1 sm:hidden" />
+        <div className="flex-1 md:hidden" />
 
         {/*
           Sélecteurs de démonstration : rôle actif et année scolaire.
@@ -54,31 +72,28 @@ export function Header({ onOpenNav }: { onOpenNav: () => void }) {
           lorsqu'elle est clôturée. Ils disparaîtront avec l'authentification réelle.
         */}
         <div className="hidden xl:flex items-center gap-2 shrink-0">
-          <select
-            aria-label="Rôle de démonstration"
-            title={ui.demoRoleNotice}
-            value={roleId}
-            onChange={(event) => setRoleId(event.target.value)}
-            className="py-2 pl-3 pr-8 bg-slate-50 border border-transparent rounded-xl text-xs text-slate-600 cursor-pointer focus-visible:border-brand-500 focus-visible:bg-white outline-none transition-colors"
-          >
-            {ROLES.map((role) => (
-              <option key={role.id} value={role.id}>
-                {role.name}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Année scolaire"
+          <div title={ui.demoRoleNotice}>
+            <SelectShell
+              variant="compact"
+              ariaLabel="Rôle de démonstration"
+              options={ROLES.map((role) => ({
+                value: role.id,
+                label: role.name,
+              }))}
+              value={roleId}
+              onSelect={setRoleId}
+            />
+          </div>
+          <SelectShell
+            variant="compact"
+            ariaLabel="Année scolaire"
+            options={ACADEMIC_YEARS.map((year) => ({
+              value: year.id,
+              label: `${year.label} — ${academicYearStatusLabels[year.status]}`,
+            }))}
             value={academicYear.id}
-            onChange={(event) => setAcademicYearId(event.target.value)}
-            className="py-2 pl-3 pr-8 bg-slate-50 border border-transparent rounded-xl text-xs text-slate-600 cursor-pointer focus-visible:border-brand-500 focus-visible:bg-white outline-none transition-colors"
-          >
-            {ACADEMIC_YEARS.map((year) => (
-              <option key={year.id} value={year.id}>
-                {year.label} — {academicYearStatusLabels[year.status]}
-              </option>
-            ))}
-          </select>
+            onSelect={setAcademicYearId}
+          />
         </div>
 
         {/* Section droite */}
@@ -92,21 +107,8 @@ export function Header({ onOpenNav }: { onOpenNav: () => void }) {
             >
               {mobileSearchOpen ? <X size={20} /> : <Search size={20} />}
             </button>
-            <button
-              type="button"
-              aria-label="Notifications"
-              className="p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-colors relative"
-            >
-              <Bell size={20} />
-              <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
-            </button>
-            <button
-              type="button"
-              aria-label="Messages"
-              className="hidden sm:inline-flex p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-colors"
-            >
-              <MessageSquare size={20} />
-            </button>
+            <NotificationBell />
+            <MessagesButton unread={unreadThreads} />
           </div>
 
           <div className="h-8 w-px bg-slate-200 hidden sm:block" />

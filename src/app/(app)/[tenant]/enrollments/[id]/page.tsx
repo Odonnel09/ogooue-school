@@ -24,6 +24,7 @@ import { genderLabels, guardianRelationLabels, ui } from '@/i18n/fr';
 import { Can, useSession } from '@/lib/auth/session';
 import { useHref } from '@/lib/hooks';
 import { useSchoolData } from '@/lib/store/school-data';
+import { useAudit } from '@/lib/audit/use-audit';
 import { classLabel, guardianName, levelLabel } from '@/lib/selectors';
 import { classOptions } from '@/lib/options';
 import { enrollmentStatusMeta } from '@/lib/status';
@@ -58,6 +59,7 @@ export default function EnrollmentDetailPage({
   const { enrollments, guardians, students, classes, config, actions } =
     useSchoolData();
   const { isYearWritable } = useSession();
+  const audit = useAudit();
 
   const [decision, setDecision] = useState<'validate' | 'reject' | null>(null);
   const [note, setNote] = useState('');
@@ -143,6 +145,14 @@ export default function EnrollmentDetailPage({
         : m.detail.toasts.rejected,
     );
 
+    audit({
+      action: decision === 'validate' ? 'enrollments.validate' : 'enrollments.reject',
+      resourceType: 'Dossier d’inscription',
+      resourceId: application!.id,
+      resourceLabel: `${application!.reference} — ${candidate}`,
+      detail: `Motif : ${note.trim()}`,
+    });
+
     setDecision(null);
     setNote('');
   }
@@ -216,6 +226,16 @@ export default function EnrollmentDetailPage({
     actions.enrollments.update(application!.id, {
       status: 'inscrite',
       createdStudentId: studentId,
+    });
+
+    audit({
+      action: 'enrollments.enroll',
+      resourceType: 'Dossier d’inscription',
+      resourceId: application!.id,
+      resourceLabel: `${application!.reference} — ${candidate}`,
+      detail: `Élève créé sous le matricule ${student.matricule}, affecté en ${
+        targetClass?.name ?? 'classe non définie'
+      }.`,
     });
 
     setConfirmEnroll(false);

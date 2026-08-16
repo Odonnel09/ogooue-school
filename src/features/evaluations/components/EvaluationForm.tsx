@@ -33,6 +33,7 @@ import {
   Select,
   Textarea,
   useToast,
+  DatePicker,
 } from '@/components/ui';
 import { evaluationMessages as m } from '../messages';
 import { evaluationSchema, type EvaluationFormValues } from '../schemas';
@@ -331,9 +332,8 @@ export function EvaluationForm({ evaluation }: { evaluation?: Evaluation }) {
           required
           error={errors.date?.message}
         >
-          <Input
+          <DatePicker
             id="date"
-            type="date"
             invalid={Boolean(errors.date)}
             {...register('date')}
           />

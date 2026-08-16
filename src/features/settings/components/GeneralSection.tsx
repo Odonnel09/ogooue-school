@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { RotateCcw, Save } from 'lucide-react';
 import { ui } from '@/i18n/fr';
 import { useSchoolData } from '@/lib/store/school-data';
+import { useAudit } from '@/lib/audit/use-audit';
 import {
   Badge,
   Button,
@@ -21,6 +22,7 @@ import { SettingsSection } from './SettingsSection';
 export function GeneralSection() {
   const toast = useToast();
   const { config, actions } = useSchoolData();
+  const audit = useAudit();
   const [saving, setSaving] = useState(false);
 
   const {
@@ -37,6 +39,13 @@ export function GeneralSection() {
     setSaving(true);
     setTimeout(() => {
       actions.updateConfig({ profile: values });
+      audit({
+        action: 'settings.profile.update',
+        resourceType: 'Établissement',
+        resourceId: config.profile.name,
+        resourceLabel: values.name,
+        detail: 'Identité de l’établissement mise à jour : elle apparaît sur tous les documents émis.',
+      });
       reset(values);
       setSaving(false);
       toast.success(m.saved);

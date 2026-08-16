@@ -1,11 +1,15 @@
 import type {
   Attachment,
+  AuditEntry,
   ClassSubject,
+  EnrollmentApplication,
+  EnrollmentStatus,
   Evaluation,
   SchoolClass,
   ScheduleSlot,
   Student,
 } from '@/types';
+import { isFileComplete } from '@/types';
 import type { GradingConfig } from '@/lib/grading/types';
 import { studentAverage } from '@/features/evaluations/queries';
 
@@ -129,4 +133,71 @@ export function evaluationSummary(
         evaluation.status === 'in_progress' || evaluation.status === 'submitted',
     ).length,
   };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Inscriptions en cours                                                       */
+/* -------------------------------------------------------------------------- */
+
+export interface EnrollmentPipeline {
+  /** Dossiers déposés, hors brouillons, refus et inscriptions abouties. */
+  inProgress: number;
+  byStatus: Array<{ status: EnrollmentStatus; count: number }>;
+  /** Dossiers en cours auxquels il manque au moins une pièce. */
+  incompleteFiles: number;
+  /** Dossiers validés attendant la création de la fiche élève. */
+  awaitingEnrollment: number;
+}
+
+/**
+ * État du flux d'inscriptions.
+ * On ne compte pas les brouillons : un dossier que la famille n'a pas soumis
+ * n'attend rien de l'établissement.
+ */
+export function enrollmentPipeline(
+  applications: EnrollmentApplication[],
+): EnrollmentPipeline {
+  const open = applications.filter(
+    (application) =>
+      application.status !== 'brouillon' &&
+      application.status !== 'refusee' &&
+      application.status !== 'inscrite',
+  );
+
+  const statuses: EnrollmentStatus[] = ['soumise', 'incomplete', 'validee'];
+
+  return {
+    inProgress: open.length,
+    byStatus: statuses.map((status) => ({
+      status,
+      count: open.filter((application) => application.status === status).length,
+    })),
+    incompleteFiles: open.filter(
+      (application) => !isFileComplete(application),
+    ).length,
+    awaitingEnrollment: open.filter(
+      (application) => application.status === 'validee',
+    ).length,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Activités récentes                                                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Dernières opérations réalisées dans l'établissement.
+ *
+ * La source est le journal d'audit, et non une collection tenue à part : deux
+ * listes d'activités finiraient par diverger, et c'est celle qui fait foi qu'il
+ * faut montrer.
+ */
+export function recentActivity(
+  auditLog: AuditEntry[],
+  limit = 6,
+): AuditEntry[] {
+  return auditLog
+    .slice()
+    .sort((a, b) => b.at.localeCompare(a.at))
+    .slice(0, limit);
 }

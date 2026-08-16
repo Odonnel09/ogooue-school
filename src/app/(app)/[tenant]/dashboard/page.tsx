@@ -15,6 +15,8 @@ import { useCapabilities } from '@/lib/school-levels/use-capabilities';
 import { useHref } from '@/lib/hooks';
 import { classLabel, studentName } from '@/lib/selectors';
 import { avatarUrl } from '@/lib/utils';
+import { SelectShell } from '@/components/ui/Select';
+import { PulseSection } from '@/features/dashboard/components/PulseSection';
 import {
   documentCategories,
   evaluationSummary,
@@ -155,21 +157,18 @@ export default function DashboardPage() {
                 Emplois du temps
               </h2>
               <div className="flex flex-wrap gap-3 sm:gap-4 items-center">
-                <select
-                  aria-label="Filtrer par classe"
+                <SelectShell
+                  variant="inline"
+                  ariaLabel="Filtrer par classe"
                   value={selectedClassId}
-                  onChange={(event) => setSelectedClassId(event.target.value)}
-                  className="text-sm text-slate-500 bg-transparent hover:text-slate-900 transition-colors cursor-pointer outline-none focus-visible:ring-4 focus-visible:ring-brand-500/20 rounded"
-                >
-                  <option value="">Toutes les classes</option>
-                  {classes
-                    .filter((item) => item.status === 'active')
-                    .map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
-                </select>
+                  onSelect={setSelectedClassId}
+                  options={[
+                    { value: '', label: 'Toutes les classes' },
+                    ...classes
+                      .filter((item) => item.status === 'active')
+                      .map((item) => ({ value: item.id, label: item.name })),
+                  ]}
+                />
                 <Link
                   href={href('/timetable')}
                   className="text-sm text-brand-600 hover:underline rounded outline-none focus-visible:ring-4 focus-visible:ring-brand-500/20"
@@ -397,6 +396,13 @@ export default function DashboardPage() {
           </section>
         </div>
       </div>
+
+      {/*
+        Second niveau exigé par `GEMINI.md` (l. 51-55) : inscriptions en cours,
+        paiements et impayés, alertes, activités récentes. Ajouté sous les blocs
+        validés, dont aucun n'est modifié.
+      */}
+      <PulseSection />
     </div>
   );
 }

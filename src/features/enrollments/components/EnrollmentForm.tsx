@@ -8,6 +8,7 @@ import { CURRENT_ACADEMIC_YEAR } from '@/data/academic';
 import { genderLabels, guardianRelationLabels, ui } from '@/i18n/fr';
 import { useHref } from '@/lib/hooks';
 import { useSchoolData } from '@/lib/store/school-data';
+import { useAudit } from '@/lib/audit/use-audit';
 import { guardianName } from '@/lib/selectors';
 import { labelOptions } from '@/lib/status';
 import { levelOptions, yearOptions } from '@/lib/options';
@@ -21,6 +22,7 @@ import {
   Input,
   Select,
   useToast,
+  DatePicker,
 } from '@/components/ui';
 import { enrollmentMessages as m } from '../messages';
 import { enrollmentSchema, type EnrollmentFormValues } from '../schemas';
@@ -30,6 +32,7 @@ export function EnrollmentForm() {
   const href = useHref();
   const toast = useToast();
   const { enrollments, guardians, config, actions } = useSchoolData();
+  const audit = useAudit();
   const [submitting, setSubmitting] = useState<EnrollmentStatus | null>(null);
 
   const {
@@ -88,6 +91,15 @@ export function EnrollmentForm() {
 
     setTimeout(() => {
       actions.enrollments.create(application);
+      if (status !== 'brouillon') {
+        audit({
+          action: 'enrollments.submit',
+          resourceType: 'Dossier d’inscription',
+          resourceId: application.id,
+          resourceLabel: `${reference} — ${values.firstName} ${values.lastName}`,
+          detail: `Dossier déposé avec ${application.documents.length} pièce(s) attendue(s).`,
+        });
+      }
       setSubmitting(null);
       toast.success(
         status === 'brouillon'
@@ -153,9 +165,8 @@ export function EnrollmentForm() {
           required
           error={errors.birthDate?.message}
         >
-          <Input
+          <DatePicker
             id="birthDate"
-            type="date"
             invalid={Boolean(errors.birthDate)}
             {...register('birthDate')}
           />

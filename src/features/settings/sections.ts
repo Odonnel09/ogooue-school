@@ -136,8 +136,7 @@ export const SETTINGS_SECTIONS: SettingsSectionEntry[] = [
     label: 'Journal d’audit',
     group: 'access',
     permission: 'audit.read',
-    ready: false,
-    pending: m.comingSoon.sections.audit,
+    ready: true,
     title: 'Journal d’audit',
     description: 'Trace des opérations sensibles réalisées dans l’établissement.',
   },
@@ -172,13 +171,12 @@ export const SETTINGS_SECTIONS: SettingsSectionEntry[] = [
   },
   {
     key: 'messaging',
-    label: 'Messagerie',
+    label: m.messaging.title,
     group: 'communication',
     permission: 'settings.manage',
-    ready: false,
-    pending: m.comingSoon.sections.messaging,
-    title: 'Messagerie',
-    description: 'Règles d’échange entre familles, enseignants et administration.',
+    ready: true,
+    title: m.messaging.title,
+    description: m.messaging.description,
   },
 ];
 

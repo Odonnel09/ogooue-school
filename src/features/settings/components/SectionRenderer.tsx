@@ -6,12 +6,14 @@ import { Card, EmptyState, LinkButton } from '@/components/ui';
 import { useHref } from '@/lib/hooks';
 import { findSection } from '../sections';
 import { ComingSoonSection } from './SettingsSection';
+import { AuditSection } from './AuditSection';
 import { CardTemplateSection } from './CardTemplateSection';
 import { EnrollmentSection } from './EnrollmentSection';
 import { FeesSection } from './FeesSection';
 import { GeneralSection } from './GeneralSection';
 import { GradingSection } from './GradingSection';
 import { LevelsSection } from './LevelsSection';
+import { MessagingSection } from './MessagingSection';
 import { PeriodsSection } from './PeriodsSection';
 import { ReportTemplateSection } from './ReportTemplateSection';
 import { RolesSection } from './RolesSection';
@@ -30,6 +32,8 @@ const READY_SECTIONS: Record<string, () => React.JSX.Element> = {
   fees: FeesSection,
   'report-templates': ReportTemplateSection,
   cards: CardTemplateSection,
+  audit: AuditSection,
+  messaging: MessagingSection,
 };
 
 export function SectionRenderer({ sectionKey }: { sectionKey: string }) {

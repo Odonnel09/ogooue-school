@@ -9,7 +9,8 @@ import { decisionLabels, ui } from '@/i18n/fr';
 import { Can, useSession } from '@/lib/auth/session';
 import { useHref } from '@/lib/hooks';
 import { useSchoolData } from '@/lib/store/school-data';
-import { studentName } from '@/lib/selectors';
+import { useAudit } from '@/lib/audit/use-audit';
+import { classLabel, studentName } from '@/lib/selectors';
 import { classOptions, periodOptions } from '@/lib/options';
 import { reportStatusMeta } from '@/lib/status';
 import { average as mean } from '@/lib/utils';
@@ -43,6 +44,7 @@ export default function ReportsPage() {
   const href = useHref();
   const toast = useToast();
   const { classes, config, reports, actions } = useSchoolData();
+  const audit = useAudit();
   const { isYearWritable } = useSession();
 
   const activeClasses = useMemo(
@@ -55,6 +57,10 @@ export default function ReportsPage() {
   const [confirmPublish, setConfirmPublish] = useState(false);
 
   const context = useReportContext(classId, periodId);
+
+  /** Libellé lisible de la période, figé dans les traces d'audit. */
+  const periodLabel =
+    config.periods.find((item) => item.id === periodId)?.label ?? periodId;
   const ranking = useMemo(() => (context ? rankingOf(context) : []), [context]);
 
   const rows = useMemo(() => {
@@ -136,6 +142,13 @@ export default function ReportsPage() {
       count += 1;
     });
 
+    audit({
+      action: 'reports.generate',
+      resourceType: 'Bulletins',
+      resourceId: `${classId}-${periodId}`,
+      resourceLabel: `${classLabel(classes, classId)} — ${periodLabel}`,
+      detail: `${count} bulletin(s) généré(s) ou recalculés. Les bulletins déjà publiés sont restés intacts.`,
+    });
     toast.success(m.list.toasts.generated(count));
   }
 
@@ -148,6 +161,13 @@ export default function ReportsPage() {
         publishedAt: REFERENCE_DATE,
       });
       count += 1;
+    });
+    audit({
+      action: 'reports.publish',
+      resourceType: 'Bulletins',
+      resourceId: `${classId}-${periodId}`,
+      resourceLabel: `${classLabel(classes, classId)} — ${periodLabel}`,
+      detail: `${count} bulletin(s) publié(s) : leur contenu, leur modèle et leur signature sont désormais figés.`,
     });
     setConfirmPublish(false);
     toast.success(m.list.toasts.published(count));

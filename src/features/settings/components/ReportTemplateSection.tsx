@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { useSchoolData } from '@/lib/store/school-data';
+import { useAudit } from '@/lib/audit/use-audit';
 import {
   Card,
   Field,
@@ -16,11 +18,42 @@ import { TemplateEditor } from './TemplateEditor';
 export function ReportTemplateSection() {
   const toast = useToast();
   const { config, actions } = useSchoolData();
+  const audit = useAudit();
 
   const signature = config.signature;
 
+  /**
+   * Identité déjà journalisée. Les champs texte se modifient frappe par
+   * frappe : sans ce repère, chaque lettre saisie produirait une entrée.
+   */
+  const [auditedSigner, setAuditedSigner] = useState(
+    `${signature.signerName}|${signature.signerRole}`,
+  );
+
   function patchSignature(changes: Partial<typeof signature>) {
     actions.updateConfig({ signature: { ...signature, ...changes } });
+  }
+
+  function recordSignature(detail: string) {
+    audit({
+      action: 'settings.signature.update',
+      resourceType: 'Signature d’établissement',
+      resourceId: 'signature',
+      resourceLabel: signature.signerName || 'Chef d’établissement',
+      detail,
+    });
+  }
+
+  /** Journalise le signataire au moment où le champ est quitté, s'il a changé. */
+  function auditSignerIdentity() {
+    const current = `${signature.signerName}|${signature.signerRole}`;
+    if (current === auditedSigner) return;
+    setAuditedSigner(current);
+    recordSignature(
+      `Signataire des bulletins : ${signature.signerName || '—'} (${
+        signature.signerRole || '—'
+      }).`,
+    );
   }
 
   return (
@@ -46,7 +79,12 @@ export function ReportTemplateSection() {
             label={m.templates.signatureFields.pad}
             hint={m.templates.signatureFields.padHint}
             value={signature.image.dataUrl}
-            onChange={(dataUrl) =>
+            onChange={(dataUrl) => {
+              recordSignature(
+                dataUrl
+                  ? 'Nouvelle signature manuscrite enregistrée : elle sera apposée sur les bulletins publiés ensuite.'
+                  : 'Signature manuscrite supprimée : les bulletins déjà publiés la conservent.',
+              );
               patchSignature({
                 image: {
                   name: dataUrl ? 'signature.png' : '',
@@ -54,8 +92,8 @@ export function ReportTemplateSection() {
                   // La taille sert au suivi du quota de stockage local.
                   size: Math.round(((dataUrl.split(',')[1] ?? '').length * 3) / 4),
                 },
-              })
-            }
+              });
+            }}
             onError={toast.error}
           />
 
@@ -67,6 +105,7 @@ export function ReportTemplateSection() {
               <Input
                 id="signer-name"
                 value={signature.signerName}
+                onBlur={auditSignerIdentity}
                 onChange={(event) =>
                   patchSignature({ signerName: event.target.value })
                 }
@@ -80,6 +119,7 @@ export function ReportTemplateSection() {
               <Input
                 id="signer-role"
                 value={signature.signerRole}
+                onBlur={auditSignerIdentity}
                 onChange={(event) =>
                   patchSignature({ signerRole: event.target.value })
                 }

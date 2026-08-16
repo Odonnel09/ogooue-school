@@ -5,6 +5,7 @@ import { FileCheck, Info, Plus, Trash2 } from 'lucide-react';
 import { studentFieldLabels } from '@/i18n/fr';
 import { useCapabilities } from '@/lib/school-levels/use-capabilities';
 import { useSchoolData } from '@/lib/store/school-data';
+import { useAudit } from '@/lib/audit/use-audit';
 import {
   Badge,
   Button,
@@ -21,6 +22,7 @@ export function EnrollmentSection() {
   const toast = useToast();
   const { config, actions } = useSchoolData();
   const capabilities = useCapabilities();
+  const audit = useAudit();
   const [documentName, setDocumentName] = useState('');
 
   /** Champs déduits de la matrice : non modifiables ici, par construction. */
@@ -39,6 +41,13 @@ export function EnrollmentSection() {
         requiredDocuments: [...config.enrollment.requiredDocuments, name],
       },
     });
+    audit({
+      action: 'settings.enrollment.update',
+      resourceType: 'Dossier d’inscription',
+      resourceId: 'required-documents',
+      resourceLabel: 'Pièces exigées',
+      detail: `« ${name} » ajoutée : les dossiers sans cette pièce seront signalés incomplets.`,
+    });
     setDocumentName('');
     toast.success(`« ${name} » ajoutée aux pièces exigées.`);
   }
@@ -52,12 +61,28 @@ export function EnrollmentSection() {
         ),
       },
     });
+    audit({
+      action: 'settings.enrollment.update',
+      resourceType: 'Dossier d’inscription',
+      resourceId: 'required-documents',
+      resourceLabel: 'Pièces exigées',
+      detail: `« ${name} » retirée des pièces exigées.`,
+    });
     toast.success(`« ${name} » retirée des pièces exigées.`);
   }
 
   function toggleApproval(next: boolean) {
     actions.updateConfig({
       enrollment: { ...config.enrollment, requiresApproval: next },
+    });
+    audit({
+      action: 'settings.enrollment.update',
+      resourceType: 'Dossier d’inscription',
+      resourceId: 'requires-approval',
+      resourceLabel: 'Validation préalable',
+      detail: next
+        ? 'Validation par la direction désormais exigée avant toute inscription.'
+        : 'Validation par la direction désactivée : le secrétariat peut inscrire directement.',
     });
     toast.success(m.saved);
   }

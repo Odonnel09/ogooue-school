@@ -11,6 +11,7 @@ import {
   Pencil,
   Send,
   Sigma,
+  Unlock,
   Users,
 } from 'lucide-react';
 
@@ -18,6 +19,7 @@ import type { EvaluationStatus } from '@/types';
 import { evaluationTypeLabels, gradingScaleLabels } from '@/i18n/fr';
 import { evaluationStatusMeta } from '@/lib/status';
 import { useSchoolData } from '@/lib/store/school-data';
+import { useAudit } from '@/lib/audit/use-audit';
 import { useHref } from '@/lib/hooks';
 import {
   classLabel,
@@ -37,11 +39,14 @@ import {
   ConfirmDialog,
   DataRow,
   EmptyState,
+  Field,
   Input,
   LinkButton,
+  Modal,
   PageContainer,
   StatCard,
   StatusBadge,
+  Textarea,
   useToast,
 } from '@/components/ui';
 
@@ -56,6 +61,7 @@ export default function EvaluationDetailPage({
   const { evaluations, classes, subjects, teachers, students, config, actions } =
     useSchoolData();
   const capabilities = useCapabilities();
+  const audit = useAudit();
 
   const evaluation = evaluations.find((item) => item.id === id);
 
@@ -63,6 +69,14 @@ export default function EvaluationDetailPage({
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [confirmPublish, setConfirmPublish] = useState(false);
+
+  /**
+   * Correction après verrouillage. `GEMINI.md` interdit de rouvrir une note
+   * validée sans trace : le motif est obligatoire et part au journal d'audit.
+   */
+  const [correctionOpen, setCorrectionOpen] = useState(false);
+  const [correctionReason, setCorrectionReason] = useState('');
+  const [correcting, setCorrecting] = useState(false);
 
   const roster = useMemo(() => {
     if (!evaluation) return [];
@@ -108,6 +122,9 @@ export default function EvaluationDetailPage({
   const stats = evaluationStats(evaluation, gradingConfig);
   const maxScore = evaluation.maxScore;
   const isPublished = evaluation.status === 'published';
+  /** Le verrou tombe dès la validation, pas seulement à la publication. */
+  const isLocked = isPublished || evaluation.status === 'validated';
+  const readOnly = isLocked && !correcting;
 
   function handleScoreChange(studentId: string, raw: string) {
     setDrafts((previous) => ({ ...previous, [studentId]: raw }));
@@ -150,9 +167,46 @@ export default function EvaluationDetailPage({
     actions.setGrade(evaluation!.id, studentId, { comment });
   }
 
-  function setStatus(status: EvaluationStatus, message: string) {
+  /**
+   * Un changement de statut engage la note : il est journalisé avec l'action
+   * correspondante, jamais avec un libellé générique.
+   */
+  function setStatus(
+    status: EvaluationStatus,
+    message: string,
+    action: 'grades.validate' | 'grades.publish' | 'grades.reopen',
+  ) {
     actions.evaluations.update(evaluation!.id, { status });
+    audit({
+      action,
+      resourceType: 'Évaluation',
+      resourceId: evaluation!.id,
+      resourceLabel: `${evaluation!.name} — ${classLabel(classes, evaluation!.classId)}`,
+      detail: `${stats.filled} note(s) sur ${stats.total}, moyenne ${stats.average ?? '—'}.`,
+    });
     toast.success(message);
+  }
+
+  /** Déverrouille la saisie après avoir consigné le motif. */
+  function openCorrection() {
+    const reason = correctionReason.trim();
+    if (reason.length < 10) {
+      toast.error('Le motif doit comporter au moins 10 caractères.');
+      return;
+    }
+
+    audit({
+      action: 'grades.correct',
+      resourceType: 'Évaluation',
+      resourceId: evaluation!.id,
+      resourceLabel: `${evaluation!.name} — ${classLabel(classes, evaluation!.classId)}`,
+      detail: `Saisie rouverte après validation. Motif : ${reason}`,
+    });
+
+    setCorrectionReason(reason);
+    setCorrecting(true);
+    setCorrectionOpen(false);
+    toast.success('Saisie déverrouillée. La correction est journalisée.');
   }
 
   const hasErrors = Object.values(errors).some(Boolean);
@@ -205,7 +259,11 @@ export default function EvaluationDetailPage({
                 variant="secondary"
                 disabled={hasErrors || stats.filled === 0}
                 onClick={() =>
-                  setStatus('validated', 'Les notes ont été validées.')
+                  setStatus(
+                    'validated',
+                    'Les notes ont été validées.',
+                    'grades.validate',
+                  )
                 }
               >
                 <CheckCircle2 size={16} /> Valider les notes
@@ -219,6 +277,11 @@ export default function EvaluationDetailPage({
                 <Send size={16} /> Publier
               </Button>
             )}
+            {isLocked && !correcting && (
+              <Button variant="outline" onClick={() => setCorrectionOpen(true)}>
+                <Unlock size={16} aria-hidden="true" /> Corriger une note
+              </Button>
+            )}
             {isPublished && (
               <Button
                 variant="outline"
@@ -226,6 +289,7 @@ export default function EvaluationDetailPage({
                   setStatus(
                     'in_progress',
                     'L’évaluation est repassée en saisie.',
+                    'grades.reopen',
                   )
                 }
               >
@@ -386,7 +450,7 @@ export default function EvaluationDetailPage({
                           max={maxScore}
                           step={0.5}
                           value={draft}
-                          disabled={isPublished}
+                          disabled={readOnly}
                           invalid={Boolean(error)}
                           onChange={(event) =>
                             handleScoreChange(student.id, event.target.value)
@@ -403,7 +467,7 @@ export default function EvaluationDetailPage({
                     <div className="mt-3">
                       <Input
                         value={grade.comment}
-                        disabled={isPublished}
+                        disabled={readOnly}
                         onChange={(event) =>
                           handleCommentChange(student.id, event.target.value)
                         }
@@ -430,6 +494,52 @@ export default function EvaluationDetailPage({
         </Card>
       </div>
 
+      {correcting && (
+        <div className="bg-yellow-50 border border-yellow-100 rounded-2xl p-4 flex items-start gap-3">
+          <Unlock
+            size={18}
+            className="text-yellow-600 mt-0.5 shrink-0"
+            aria-hidden="true"
+          />
+          <p className="text-xs text-yellow-800 leading-relaxed">
+            Correction autorisée pour cette session. Le motif « {correctionReason}{' '}
+            » est inscrit au journal d’audit, avec votre nom et l’heure.
+          </p>
+        </div>
+      )}
+
+      <Modal
+        open={correctionOpen}
+        onClose={() => setCorrectionOpen(false)}
+        title="Corriger une note verrouillée"
+        description="Ces notes sont validées. Toute correction est journalisée et le motif reste consultable."
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setCorrectionOpen(false)}
+            >
+              Annuler
+            </Button>
+            <Button onClick={openCorrection}>Déverrouiller la saisie</Button>
+          </>
+        }
+      >
+        <Field
+          label="Motif de la correction"
+          htmlFor="correction-reason"
+          hint="Dix caractères au minimum. Ce texte figurera dans le journal d’audit."
+        >
+          <Textarea
+            id="correction-reason"
+            rows={3}
+            value={correctionReason}
+            onChange={(event) => setCorrectionReason(event.target.value)}
+            placeholder="Erreur de report sur la copie n° 12…"
+          />
+        </Field>
+      </Modal>
+
       <ConfirmDialog
         open={confirmPublish}
         title="Publier les résultats ?"
@@ -439,7 +549,11 @@ export default function EvaluationDetailPage({
         onCancel={() => setConfirmPublish(false)}
         onConfirm={() => {
           setConfirmPublish(false);
-          setStatus('published', 'Les résultats ont été publiés.');
+          setStatus(
+            'published',
+            'Les résultats ont été publiés.',
+            'grades.publish',
+          );
         }}
       />
     </PageContainer>

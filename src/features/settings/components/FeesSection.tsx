@@ -5,6 +5,7 @@ import { AlertTriangle, Plus, Receipt, Trash2 } from 'lucide-react';
 import type { FeeInstallment, FeeItem, FeeSchedule } from '@/types';
 import { CURRENT_ACADEMIC_YEAR } from '@/data/academic';
 import { useSchoolData } from '@/lib/store/school-data';
+import { useAudit } from '@/lib/audit/use-audit';
 import { levelOptions, yearOptions } from '@/lib/options';
 import { formatMoney, share, sumAmounts } from '@/lib/money';
 import { createId } from '@/lib/utils';
@@ -19,6 +20,7 @@ import {
   MultiSelect,
   Select,
   useToast,
+  DatePicker,
 } from '@/components/ui';
 import { settingsMessages as m } from '../messages';
 import { SettingsSection } from './SettingsSection';
@@ -26,6 +28,7 @@ import { SettingsSection } from './SettingsSection';
 export function FeesSection() {
   const toast = useToast();
   const { config, actions } = useSchoolData();
+  const audit = useAudit();
   const [toDelete, setToDelete] = useState<FeeSchedule | null>(null);
 
   const schedules = config.feeSchedules;
@@ -67,11 +70,25 @@ export function FeesSection() {
       ],
     };
     writeSchedules([...schedules, schedule]);
+    audit({
+      action: 'settings.fees.update',
+      resourceType: 'Grille tarifaire',
+      resourceId: schedule.id,
+      resourceLabel: schedule.label,
+      detail: 'Nouvelle grille tarifaire créée.',
+    });
     toast.success(m.fees.toasts.scheduleAdded);
   }
 
   function removeSchedule(schedule: FeeSchedule) {
     writeSchedules(schedules.filter((item) => item.id !== schedule.id));
+    audit({
+      action: 'settings.fees.update',
+      resourceType: 'Grille tarifaire',
+      resourceId: schedule.id,
+      resourceLabel: schedule.label,
+      detail: 'Grille tarifaire supprimée. Les factures déjà émises sont inchangées.',
+    });
     setToDelete(null);
     toast.success(m.fees.toasts.scheduleRemoved(schedule.label));
   }
@@ -365,9 +382,8 @@ export function FeesSection() {
                           })
                         }
                       />
-                      <Input
+                      <DatePicker
                         aria-label={`${m.fees.fields.dueDate} — ${installment.label}`}
-                        type="date"
                         value={installment.dueDate}
                         className="py-2.5 bg-white"
                         onChange={(event) =>

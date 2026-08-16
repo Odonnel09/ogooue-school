@@ -17,6 +17,7 @@ import type { SchoolClass } from '@/types';
 import { classStatusLabels, cycleLabels } from '@/i18n/fr';
 import { classStatusMeta, labelOptions } from '@/lib/status';
 import { useSchoolData } from '@/lib/store/school-data';
+import { useAudit } from '@/lib/audit/use-audit';
 import { useHref, useSimulatedLoading } from '@/lib/hooks';
 import {
   classHeadcount,
@@ -60,6 +61,7 @@ export default function ClassesPage() {
   const toast = useToast();
   const ready = useSimulatedLoading();
   const { classes, students, teachers, actions, config } = useSchoolData();
+  const audit = useAudit();
 
   const [search, setSearch] = useState('');
   const [cycleFilter, setCycleFilter] = useState('');
@@ -111,6 +113,13 @@ export default function ClassesPage() {
 
   function archiveClass(schoolClass: SchoolClass) {
     actions.classes.update(schoolClass.id, { status: 'archivee' });
+    audit({
+      action: 'classes.archive',
+      resourceType: 'Classe',
+      resourceId: schoolClass.id,
+      resourceLabel: schoolClass.name,
+      detail: 'Classe archivée : elle disparaît des affectations sans perdre son historique.',
+    });
     setToArchive(null);
     toast.success(`La classe ${schoolClass.name} a été archivée.`);
   }

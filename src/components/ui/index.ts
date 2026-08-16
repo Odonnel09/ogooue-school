@@ -9,10 +9,12 @@ export {
   FormActions,
   Field,
   Input,
-  Select,
   Textarea,
   Checkbox,
 } from './Form';
+export { Select } from './Select';
+export { DatePicker } from './DatePicker';
+export { PopoverPanel } from './Popover';
 export { AssetUpload } from './AssetUpload';
 export { MultiSelect } from './MultiSelect';
 export { SignaturePad } from './SignaturePad';

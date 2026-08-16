@@ -5,6 +5,7 @@ import { SlidersHorizontal, X } from 'lucide-react';
 import type { SelectOption } from '@/types';
 import { cn } from '@/lib/utils';
 import { SearchInput } from './SearchInput';
+import { SelectShell } from './Select';
 
 /**
  * Barre de recherche + filtres.
@@ -92,7 +93,7 @@ export function FilterBar({
   );
 }
 
-/** Select compact utilisé dans la barre de filtres. */
+/** Liste déroulante compacte de la barre de filtres. */
 export function FilterSelect({
   value,
   onChange,
@@ -111,30 +112,26 @@ export function FilterSelect({
   fullWidth?: boolean;
   className?: string;
 }) {
+  /**
+   * L'option vide en tête vaut « tous » : c'est elle qui remet le filtre à
+   * zéro sans recourir à un bouton distinct par filtre.
+   */
+  const withReset: SelectOption[] = [
+    { value: '', label: placeholder },
+    ...options,
+  ];
+
   return (
-    <select
-      aria-label={label ?? placeholder}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      className={cn(
-        'w-full py-2.5 pl-3.5 pr-9 bg-slate-50 border border-transparent rounded-xl text-sm text-slate-600 cursor-pointer appearance-none bg-no-repeat focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10 transition-all duration-300 outline-none',
-        !fullWidth && 'lg:w-auto',
-        value && 'text-slate-900 bg-brand-50/60',
-        className,
-      )}
-      style={{
-        backgroundImage:
-          "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")",
-        backgroundSize: '1rem',
-        backgroundPosition: 'right 0.75rem center',
-      }}
-    >
-      <option value="">{placeholder}</option>
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
+    <div className={cn('min-w-0', !fullWidth && 'lg:w-48')}>
+      <SelectShell
+        variant="filter"
+        options={withReset}
+        value={value}
+        onSelect={onChange}
+        placeholder={placeholder}
+        ariaLabel={label ?? placeholder}
+        className={className}
+      />
+    </div>
   );
 }
