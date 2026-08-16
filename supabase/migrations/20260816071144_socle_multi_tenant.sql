@@ -289,18 +289,18 @@ grant select, insert, delete on public.role_permissions to authenticated;
 grant select, insert, update, delete on public.memberships to authenticated;
 
 -- --- Catalogue des permissions : référence, en lecture pour tous les connectés
-create policy "permissions lisibles par les utilisateurs connectés"
+create policy "permissions lisibles par les utilisateurs connectes"
   on public.permissions for select
   to authenticated
   using (true);
 
 -- --- Établissements
-create policy "un établissement n'est visible que par ses membres"
+create policy "un etablissement n est visible que par ses membres"
   on public.tenants for select
   to authenticated
   using (id in (select app.current_tenant_ids()));
 
-create policy "configurer son établissement exige settings.manage"
+create policy "configurer son etablissement exige settings manage"
   on public.tenants for update
   to authenticated
   using (app.has_permission(id, 'settings.manage'))
@@ -310,29 +310,29 @@ create policy "configurer son établissement exige settings.manage"
 -- plateforme, pas d'un client authentifié : aucune politique ici.
 
 -- --- Rôles
-create policy "les rôles sont visibles par les membres de l'établissement"
+create policy "les roles sont visibles par les membres de l etablissement"
   on public.roles for select
   to authenticated
   using (tenant_id in (select app.current_tenant_ids()));
 
-create policy "créer un rôle exige settings.manage"
+create policy "creer un role exige settings manage"
   on public.roles for insert
   to authenticated
   with check (app.has_permission(tenant_id, 'settings.manage'));
 
-create policy "modifier un rôle exige settings.manage"
+create policy "modifier un role exige settings manage"
   on public.roles for update
   to authenticated
   using (app.has_permission(tenant_id, 'settings.manage'))
   with check (app.has_permission(tenant_id, 'settings.manage'));
 
-create policy "un rôle système ne se supprime pas"
+create policy "un role systeme ne se supprime pas"
   on public.roles for delete
   to authenticated
   using (app.has_permission(tenant_id, 'settings.manage') and is_system = false);
 
 -- --- Permissions attachées aux rôles
-create policy "les droits d'un rôle suivent la visibilité du rôle"
+create policy "les droits d un role suivent la visibilite du role"
   on public.role_permissions for select
   to authenticated
   using (
@@ -343,7 +343,7 @@ create policy "les droits d'un rôle suivent la visibilité du rôle"
     )
   );
 
-create policy "accorder un droit exige settings.manage"
+create policy "accorder un droit exige settings manage"
   on public.role_permissions for insert
   to authenticated
   with check (
@@ -353,7 +353,7 @@ create policy "accorder un droit exige settings.manage"
     )
   );
 
-create policy "retirer un droit exige settings.manage"
+create policy "retirer un droit exige settings manage"
   on public.role_permissions for delete
   to authenticated
   using (
@@ -369,31 +369,31 @@ create policy "chacun voit ses propres appartenances"
   to authenticated
   using (user_id = (select auth.uid()));
 
-create policy "gérer les comptes permet de voir les appartenances"
+create policy "gerer les comptes permet de voir les appartenances"
   on public.memberships for select
   to authenticated
   using (app.has_permission(tenant_id, 'users.manage'));
 
-create policy "inviter quelqu'un exige users.manage"
+create policy "inviter quelqu un exige users manage"
   on public.memberships for insert
   to authenticated
   with check (app.has_permission(tenant_id, 'users.manage'));
 
 -- Accepter ou refuser son invitation reste possible sans droit particulier :
 -- c'est sa propre appartenance, et elle n'existe que parce qu'on l'a invité.
-create policy "chacun répond à sa propre invitation"
+create policy "chacun repond a sa propre invitation"
   on public.memberships for update
   to authenticated
   using (user_id = (select auth.uid()))
   with check (user_id = (select auth.uid()));
 
-create policy "administrer une appartenance exige users.manage"
+create policy "administrer une appartenance exige users manage"
   on public.memberships for update
   to authenticated
   using (app.has_permission(tenant_id, 'users.manage'))
   with check (app.has_permission(tenant_id, 'users.manage'));
 
-create policy "retirer quelqu'un exige users.manage"
+create policy "retirer quelqu un exige users manage"
   on public.memberships for delete
   to authenticated
   using (app.has_permission(tenant_id, 'users.manage'));
