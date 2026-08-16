@@ -1,10 +1,18 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import type { Database } from './database.types';
 
+/**
+ * Client Supabase des composants et actions serveur.
+ *
+ * C'est ici que se joue la sécurité réelle : la session vient des cookies, et
+ * l'identité qu'elle porte alimente `auth.uid()`, dont dépendent toutes les
+ * politiques RLS. Le `tenant_id` de l'URL n'entre jamais dans cette chaîne.
+ */
 export async function createClient() {
   const cookieStore = await cookies();
 
-  return createServerClient(
+  return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
