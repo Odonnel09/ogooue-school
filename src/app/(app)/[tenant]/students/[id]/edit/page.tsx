@@ -1,37 +1,31 @@
-'use client';
-
-import { use } from 'react';
-import { useHref } from '@/lib/hooks';
-import { useSchoolData } from '@/lib/store/school-data';
+import { getStudentFormData } from '@/features/students/queries.server';
+import { StudentForm } from '@/features/students/components/StudentForm';
 import { studentName } from '@/lib/selectors';
 import {
+  Card,
   EmptyState,
   LinkButton,
   PageContainer,
   PageHeader,
-  Card,
 } from '@/components/ui';
-import { StudentForm } from '@/features/students/components/StudentForm';
 
-export default function EditStudentPage({
+export default async function EditStudentPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ tenant: string; id: string }>;
 }) {
-  const { id } = use(params);
-  const href = useHref();
-  const { students } = useSchoolData();
-  const student = students.find((item) => item.id === id);
+  const { tenant, id } = await params;
+  const data = await getStudentFormData(id);
 
-  if (!student) {
+  if (!data.student) {
     return (
       <PageContainer>
         <Card>
           <EmptyState
             title="Élève introuvable"
-            message="Cette fiche n’existe pas ou a été supprimée."
+            message="Cette fiche n’existe pas, ou vous n’y avez pas accès."
             action={
-              <LinkButton href={href('/students')} variant="outline">
+              <LinkButton href={`/${tenant}/students`} variant="outline">
                 Retour à la liste
               </LinkButton>
             }
@@ -41,18 +35,20 @@ export default function EditStudentPage({
     );
   }
 
+  const nom = studentName(data.student);
+
   return (
     <PageContainer>
       <PageHeader
-        title={`Modifier ${studentName(student)}`}
-        description="Les modifications sont appliquées immédiatement à la fiche et à la liste."
+        title={`Modifier ${nom}`}
+        description="Les modifications sont enregistrées en base et visibles immédiatement."
         breadcrumb={[
-          { label: 'Élèves', href: href('/students') },
-          { label: studentName(student), href: href(`/students/${student.id}`) },
+          { label: 'Élèves', href: `/${tenant}/students` },
+          { label: nom, href: `/${tenant}/students/${id}` },
           { label: 'Modifier' },
         ]}
       />
-      <StudentForm student={student} />
+      <StudentForm tenantSlug={tenant} {...data} />
     </PageContainer>
   );
 }

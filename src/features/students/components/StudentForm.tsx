@@ -7,15 +7,19 @@ import { useRouter } from 'next/navigation';
 import { Paperclip, Trash2, UserRound } from 'lucide-react';
 import { CURRENT_ACADEMIC_YEAR } from '@/data/academic';
 import { genderLabels, guardianRelationLabels, ui } from '@/i18n/fr';
-import { guardianName, linksOfStudent } from '@/lib/selectors';
+import { guardianName } from '@/lib/selectors';
 import { useHref } from '@/lib/hooks';
 import { useCapabilities } from '@/lib/school-levels/use-capabilities';
-import { useSchoolData } from '@/lib/store/school-data';
-import { useAudit } from '@/lib/audit/use-audit';
 import { labelOptions } from '@/lib/status';
-import { classOptions, levelOptions, yearOptions } from '@/lib/options';
+import { classOptions } from '@/lib/options';
 import { avatarUrl, createId, todayIso } from '@/lib/utils';
-import type { Attachment, GuardianLink, Student } from '@/types';
+import type {
+  Attachment,
+  Guardian,
+  GuardianLink,
+  SchoolClass,
+  Student,
+} from '@/types';
 import {
   Button,
   Field,
@@ -28,6 +32,7 @@ import {
   useToast,
   DatePicker,
 } from '@/components/ui';
+import { saveStudent } from '../actions';
 import { studentMessages as m } from '../messages';
 import {
   studentDraftSchema,
@@ -63,19 +68,32 @@ function toFormValues(
   };
 }
 
-export function StudentForm({ student }: { student?: Student }) {
+/**
+ * Formulaire du dossier élève.
+ *
+ * Les listes déroulantes — classes, tuteurs, matricules déjà pris — viennent
+ * du serveur : c'est ce qui garantit qu'un identifiant choisi ici existe
+ * réellement en base. L'enregistrement repart en Server Action.
+ */
+export function StudentForm({
+  tenantSlug,
+  student,
+  classes,
+  guardians,
+  takenMatricules: takenFromServer,
+  currentLink,
+}: {
+  tenantSlug: string;
+  student?: Student;
+  classes: SchoolClass[];
+  guardians: Guardian[];
+  takenMatricules: string[];
+  currentLink?: GuardianLink;
+}) {
   const isEdit = Boolean(student);
   const router = useRouter();
   const href = useHref();
   const toast = useToast();
-  const { students, classes, guardians, guardianLinks, config, actions } =
-    useSchoolData();
-  const audit = useAudit();
-
-  /** Rattachement principal existant, s'il y en a un. */
-  const currentLink = student
-    ? linksOfStudent(guardianLinks, student.id)[0]
-    : undefined;
   const capabilities = useCapabilities();
 
   const [documents, setDocuments] = useState<Attachment[]>(
@@ -84,13 +102,7 @@ export function StudentForm({ student }: { student?: Student }) {
   const [documentName, setDocumentName] = useState('');
   const [submitting, setSubmitting] = useState<'draft' | 'final' | null>(null);
 
-  const takenMatricules = useMemo(
-    () =>
-      students
-        .filter((item) => item.id !== student?.id)
-        .map((item) => item.matricule),
-    [students, student?.id],
-  );
+  const takenMatricules = takenFromServer;
 
   const {
     register,
@@ -136,19 +148,23 @@ export function StudentForm({ student }: { student?: Student }) {
   const hasField = (field: (typeof activeFields)[number]) =>
     activeFields.includes(field);
 
+  /** Libellé du niveau porté par une classe, pour l'affichage en lecture seule. */
+  function levelNameOf(id: string): string {
+    const selected = classes.find((item) => item.id === id);
+    return selected ? `Niveau de ${selected.name}` : '';
+  }
+
   function handleClassChange(nextClassId: string) {
     setValue('classId', nextClassId, { shouldValidate: false });
     const selected = classes.find((item) => item.id === nextClassId);
     if (selected) setValue('levelId', selected.levelId);
   }
 
-  function buildStudent(values: StudentFormValues, isDraft: boolean): Student {
-    const id = student?.id ?? createId('std');
-    const className =
-      classes.find((item) => item.id === values.classId)?.name ?? 'Non affecté';
+  function persist(values: StudentFormValues, isDraft: boolean) {
+    setSubmitting(isDraft ? 'draft' : 'final');
 
-    return {
-      id,
+    void saveStudent(tenantSlug, {
+      id: student?.id,
       firstName: values.firstName,
       lastName: values.lastName,
       matricule: values.matricule,
@@ -157,83 +173,33 @@ export function StudentForm({ student }: { student?: Student }) {
       gender: values.gender,
       nationality: values.nationality,
       address: values.address,
-      photoUrl: values.photoUrl || undefined,
       classId: values.classId,
       levelId: values.levelId,
-      academicYear: values.academicYear,
-      status: isDraft ? 'en_attente' : values.status,
+      status: values.status,
       medicalInfo: values.medicalInfo,
       previousSchool: values.previousSchool,
       filiere: values.filiere,
       parcours: values.parcours,
-      documents,
-      enrollment: student?.enrollment ?? [
-        {
-          id: `${id}-enr-1`,
-          academicYear: values.academicYear,
-          className,
-          date: todayIso(),
-          label: isDraft
-            ? 'Dossier créé en brouillon'
-            : `Inscription enregistrée pour l’année ${values.academicYear}`,
-        },
-      ],
-      createdAt: student?.createdAt ?? todayIso(),
       isDraft,
-    };
-  }
-
-  function persist(values: StudentFormValues, isDraft: boolean) {
-    setSubmitting(isDraft ? 'draft' : 'final');
-    const payload = buildStudent(values, isDraft);
-
-    // Latence simulée : sera remplacée par l'appel Supabase.
-    setTimeout(() => {
-      // Le rattachement au tuteur est une ligne à part : un même adulte peut
-      // suivre plusieurs enfants.
-      if (values.guardianId) {
-        const linkId = currentLink?.id ?? `gl-${values.guardianId}-${payload.id}`;
-        const nextLink: GuardianLink = {
-          id: linkId,
-          guardianId: values.guardianId,
-          studentId: payload.id,
-          relation: values.guardianRelation,
-          isPrimary: true,
-          canPickUp: values.canPickUp,
-        };
-        if (currentLink) {
-          actions.guardianLinks.update(currentLink.id, nextLink);
-        } else {
-          actions.guardianLinks.create(nextLink);
-        }
-      }
-
-      audit({
-        action: isEdit ? 'students.update' : 'students.create',
-        resourceType: 'Élève',
-        resourceId: payload.id,
-        resourceLabel: `${payload.firstName} ${payload.lastName} (${payload.matricule})`,
-        detail: isDraft
-          ? 'Dossier enregistré en brouillon : il reste incomplet.'
-          : `Dossier ${isEdit ? 'modifié' : 'créé'} et rattaché à la classe ${
-              payload.classId || 'non définie'
-            }.`,
-      });
-
-      if (isEdit) {
-        actions.students.update(payload.id, payload);
-        toast.success(m.form.toasts.updated(payload.firstName));
-      } else {
-        actions.students.create(payload);
-        toast.success(
-          isDraft
-            ? m.form.toasts.draft
-            : m.form.toasts.created(`${payload.firstName} ${payload.lastName}`),
-        );
-      }
+      guardianId: values.guardianId,
+      guardianRelation: values.guardianRelation,
+      canPickUp: values.canPickUp,
+    }).then((result) => {
       setSubmitting(null);
-      router.push(href(`/students/${payload.id}`));
-    }, 500);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(
+        isEdit
+          ? m.form.toasts.updated(values.firstName)
+          : isDraft
+            ? m.form.toasts.draft
+            : m.form.toasts.created(`${values.firstName} ${values.lastName}`),
+      );
+      router.push(href(`/students/${result.id}`));
+      router.refresh();
+    });
   }
 
   /** Le brouillon n'exige que l'identité : le dossier reste incomplet. */
@@ -422,18 +388,29 @@ export function StudentForm({ student }: { student?: Student }) {
           error={errors.levelId?.message}
           hint={m.form.fields.levelHint}
         >
-          <Select
+          {/*
+            Le niveau découle de la classe choisie et n'est plus saisissable :
+            le laisser libre permettait d'inscrire un élève de 6ème dans un
+            niveau de Terminale.
+          */}
+          <Input
             id="levelId"
-            options={levelOptions(config.activeCycles)}
-            placeholder="Sélectionner un niveau"
-            invalid={Boolean(errors.levelId)}
-            {...register('levelId')}
+            readOnly
+            value={
+              classes.find((item) => item.id === classId)?.name
+                ? levelNameOf(classId)
+                : ''
+            }
+            placeholder="Déduit de la classe"
+            className="bg-slate-50 text-slate-500"
           />
+          <input type="hidden" {...register('levelId')} />
         </Field>
 
-        <Field label={m.form.fields.academicYear} htmlFor="academicYear">
-          <Select id="academicYear" options={yearOptions()} {...register('academicYear')} />
-        </Field>
+        {/*
+          L'année scolaire est fixée par le serveur à l'enregistrement : la
+          laisser au client permettrait de rattacher un élève à une année close.
+        */}
       </FormSection>
 
       {hasField('guardian') && (
