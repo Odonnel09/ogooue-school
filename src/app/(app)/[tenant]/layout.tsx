@@ -1,10 +1,25 @@
+import { redirect } from 'next/navigation';
 import { AppShell } from '@/components/layout/AppShell';
 import { TenantDenied } from '@/components/layout/TenantDenied';
-import { pendingMembership, resolveMembership } from '@/lib/tenant/membership';
+import { getSessionContext } from '@/lib/auth/server';
 import { SchoolDataProvider } from '@/lib/store/school-data';
 import { SessionProvider } from '@/lib/auth/session';
 import { ToastProvider } from '@/components/ui/Toast';
 
+/**
+ * Racine de l'espace établissement.
+ *
+ * Trois vérifications, dans cet ordre, **avant tout rendu de données** :
+ *
+ *   1. Une session existe-t-elle ? Sinon, retour à la connexion.
+ *   2. L'utilisateur appartient-il à l'établissement demandé ? Le slug de
+ *      l'URL est une demande, jamais une autorisation (`GEMINI.md` l. 404).
+ *   3. Quelles permissions y détient-il ? Résolues côté serveur, transmises
+ *      à l'interface qui se contente de les afficher.
+ *
+ * Aucun provider de données n'est monté tant que ces trois réponses ne sont
+ * pas obtenues : il n'y a rien à intercepter dans le HTML envoyé.
+ */
 export default async function TenantLayout({
   children,
   params,
@@ -14,37 +29,32 @@ export default async function TenantLayout({
 }) {
   const { tenant } = await params;
 
-  // NOTE: En mode développement sans Supabase initialisé, on passe outre l'authentification.
-  // Décommentez ces lignes une fois le projet Supabase lié.
-  /*
-  const supabase = await createClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
+  const session = await getSessionContext(tenant);
 
-  if (error || !user) {
-    redirect('/login');
+  if (!session) {
+    redirect(`/login?suite=/${tenant}/dashboard`);
   }
-  */
 
-  /**
-   * VÉRIFICATION DE L'APPARTENANCE — avant tout rendu de données.
-   *
-   * Le slug de l'URL est une demande, pas une autorisation. Tant que
-   * l'appartenance n'est pas établie, aucun provider de données n'est monté :
-   * il n'y a rien à intercepter dans le HTML envoyé.
-   *
-   * REMPLACEMENT SUPABASE : cette lecture deviendra une requête sur
-   * `memberships` filtrée par l'utilisateur de la session serveur, doublée de
-   * politiques RLS. Le `tenant_id` ne sera jamais lu depuis le navigateur.
-   */
-  const membership = resolveMembership(tenant);
-
-  if (!membership) {
-    return <TenantDenied slug={tenant} pending={pendingMembership(tenant)} />;
+  if (!session.membership) {
+    const invitation =
+      session.memberships.find((item) => item.slug === tenant) ?? null;
+    return (
+      <TenantDenied
+        slug={tenant}
+        pending={invitation}
+        available={session.memberships}
+      />
+    );
   }
 
   return (
     <SchoolDataProvider>
-      <SessionProvider tenantSlug={tenant}>
+      <SessionProvider
+        membership={session.membership}
+        memberships={session.memberships}
+        permissions={session.permissions}
+        email={session.email}
+      >
         <ToastProvider>
           <AppShell tenantSlug={tenant}>{children}</AppShell>
         </ToastProvider>

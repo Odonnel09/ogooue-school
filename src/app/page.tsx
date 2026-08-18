@@ -1,22 +1,22 @@
 import { redirect } from 'next/navigation';
-import { activeMemberships } from '@/lib/tenant/membership';
+import { getMemberships, getUser } from '@/lib/auth/server';
 
 /**
  * Racine de l'application.
  *
- * Il n'y a rien à afficher ici : tout écran appartient à un établissement.
- * Avec une seule appartenance, choisir n'aurait aucun sens — on ouvre
- * directement. Au-delà, on passe par le sélecteur.
- *
- * REMPLACEMENT SUPABASE : la redirection ira vers `/login` en l'absence de
- * session, et les appartenances seront lues côté serveur depuis celle-ci.
+ * Rien à afficher ici : tout écran appartient à un établissement. On oriente
+ * selon ce que la session permet — sans session, la connexion ; avec une
+ * seule appartenance, l'établissement directement, choisir n'aurait aucun
+ * sens ; au-delà, le sélecteur.
  */
-export default function RootPage() {
-  const memberships = activeMemberships();
+export default async function RootPage() {
+  const user = await getUser();
+  if (!user) redirect('/login');
 
-  if (memberships.length === 1) {
-    redirect(`/${memberships[0].slug}/dashboard`);
-  }
+  const memberships = (await getMemberships()).filter(
+    (item) => item.status === 'active',
+  );
 
+  if (memberships.length === 1) redirect(`/${memberships[0].slug}/dashboard`);
   redirect('/select-tenant');
 }

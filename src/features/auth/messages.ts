@@ -9,9 +9,6 @@ export const authMessages = {
     ],
   },
 
-  mockNotice:
-    'Maquette d’interface : aucune authentification réelle n’est branchée. Les identifiants saisis ne quittent pas cette page.',
-
   login: {
     title: 'Connexion',
     description: 'Accédez à l’espace de votre établissement.',
@@ -30,6 +27,8 @@ export const authMessages = {
     hidePassword: 'Masquer le mot de passe',
     noEnumerationNotice:
       'Le message d’erreur ne dit jamais si l’adresse existe : l’indiquer permettrait de dresser la liste des comptes de l’établissement.',
+    inviteOnlyNotice:
+      'Les comptes sont créés par l’administrateur de votre établissement. Si vous n’en avez pas encore, demandez-lui une invitation.',
   },
 
   forgot: {
@@ -57,6 +56,8 @@ export const authMessages = {
     },
     strength: 'Robustesse',
     submit: 'Enregistrer le mot de passe',
+    updateFailed:
+      'Le mot de passe n’a pas pu être modifié. Le lien a peut-être expiré ; demandez-en un nouveau.',
     doneTitle: 'Mot de passe modifié',
     doneMessage:
       'Vous pouvez maintenant vous connecter avec votre nouveau mot de passe. Les autres sessions ouvertes ont été fermées.',
@@ -95,6 +96,7 @@ export const authMessages = {
     title: 'Choisir un établissement',
     description:
       'Votre compte est rattaché à plusieurs établissements. Le rôle change avec l’établissement.',
+    single: 'Ouvrez l’espace de votre établissement.',
     open: 'Ouvrir',
     pending: 'Invitation en attente',
     review: 'Examiner l’invitation',

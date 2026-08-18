@@ -1,156 +1,112 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { useActionState, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { useForm, useWatch } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Check, CheckCircle2, Info, KeyRound, LinkIcon, X } from 'lucide-react';
+import { AlertCircle, Check, CheckCircle2, Info, KeyRound, X } from 'lucide-react';
 import { passwordStrength } from '@/lib/auth/password';
 import { cn } from '@/lib/utils';
 import { Button, Card, Field, Input } from '@/components/ui';
-import {
-  resetPasswordSchema,
-  type ResetPasswordValues,
-} from '@/features/auth/schemas';
+import { updatePassword, type ActionState } from '@/features/auth/actions';
 import { authMessages as m } from '@/features/auth/messages';
-import { AuthCardSkeleton } from '@/features/auth/components/AuthCardSkeleton';
 
 /**
  * Définition d'un nouveau mot de passe.
  *
- * Le jeton présent dans l'adresse **vaut preuve d'identité à lui seul** :
- * quiconque l'obtient peut changer le mot de passe. D'où trois exigences, dont
- * une seule relève de cet écran :
- *   — usage unique et expiration courte (serveur) ;
- *   — vérification à chaque emploi (serveur) ;
- *   — ne jamais le recopier ailleurs que dans l'appel qui l'échange (ici).
+ * Le jeton n'apparaît plus dans cette page : il a été échangé contre une
+ * session par `/auth/callback` avant d'y arriver. C'est volontaire — un jeton
+ * vaut preuve d'identité à lui seul, il ne doit pas séjourner dans une URL
+ * lisible par un historique de navigateur ou un journal de serveur.
  *
- * REMPLACEMENT SUPABASE : `supabase.auth.updateUser({ password })` après
- * échange du jeton contre une session, dans une Server Action.
+ * La conséquence : sans session, l'action refuse. Un lien expiré ne peut donc
+ * rien modifier, même en atteignant cette page.
  */
-const TONE_BARS: Record<string, string> = {
+const BARRES: Record<string, string> = {
   red: 'bg-red-500',
   orange: 'bg-orange-500',
   yellow: 'bg-yellow-500',
   green: 'bg-green-500',
 };
 
-const TONE_TEXT: Record<string, string> = {
+const TEXTES: Record<string, string> = {
   red: 'text-red-500',
   orange: 'text-orange-500',
   yellow: 'text-yellow-600',
   green: 'text-green-600',
 };
 
-function ResetPasswordContent() {
-  const searchParams = useSearchParams();
-  const token = searchParams.get('token') ?? '';
+export default function ResetPasswordPage() {
+  const [password, setPassword] = useState('');
+  const [state, formAction, pending] = useActionState<ActionState, FormData>(
+    updatePassword,
+    {},
+  );
 
-  const [done, setDone] = useState(false);
-  const [pending, setPending] = useState(false);
-
-  const {
-    register,
-    handleSubmit,
-    control,
-    formState: { errors },
-  } = useForm<ResetPasswordValues>({
-    defaultValues: { password: '', confirmation: '' },
-    resolver: zodResolver(resetPasswordSchema),
-  });
-
-  const password = useWatch({ control, name: 'password' }) ?? '';
   const strength = passwordStrength(password);
 
-  function submit() {
-    setPending(true);
-    setTimeout(() => {
-      setPending(false);
-      setDone(true);
-    }, 600);
-  }
-
-  /* ------------------------------------------------ Lien absent ou expiré */
-  if (!token) {
-    return (
-      <Card className="p-6 sm:p-8">
-        <span className="w-12 h-12 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center mb-5">
-          <LinkIcon size={24} aria-hidden="true" />
-        </span>
-
-        <h1 className="text-xl font-bold text-slate-900">
-          {m.reset.invalidTitle}
-        </h1>
-        <p className="text-sm text-slate-600 mt-2 leading-relaxed">
-          {m.reset.invalidMessage}
-        </p>
-
-        <div className="mt-6">
-          <Link
-            href="/forgot-password"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-brand-600 hover:bg-brand-700 text-white shadow-sm transition-colors outline-none focus-visible:ring-4 focus-visible:ring-brand-500/20"
-          >
-            {m.reset.request}
-          </Link>
-        </div>
-      </Card>
-    );
-  }
-
-  /* --------------------------------------------------------- Confirmation */
-  if (done) {
+  if (state.success) {
     return (
       <Card className="p-6 sm:p-8">
         <span className="w-12 h-12 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center mb-5">
           <CheckCircle2 size={24} aria-hidden="true" />
         </span>
 
-        <h1 className="text-xl font-bold text-slate-900">
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
           {m.reset.doneTitle}
         </h1>
         <p className="text-sm text-slate-600 mt-2 leading-relaxed">
-          {m.reset.doneMessage}
+          {state.success}
         </p>
 
-        <div className="mt-6">
+        <div className="mt-7">
           <Link
-            href="/login"
+            href="/select-tenant"
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-brand-600 hover:bg-brand-700 text-white shadow-sm transition-colors outline-none focus-visible:ring-4 focus-visible:ring-brand-500/20"
           >
-            {m.reset.toLogin}
+            Continuer
           </Link>
         </div>
       </Card>
     );
   }
 
-  /* ------------------------------------------------------------ Formulaire */
   return (
     <Card className="p-6 sm:p-8">
-      <h1 className="text-xl font-bold text-slate-900">{m.reset.title}</h1>
-      <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+      <span className="w-12 h-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center mb-5">
+        <KeyRound size={24} aria-hidden="true" />
+      </span>
+
+      <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+        {m.reset.title}
+      </h1>
+      <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">
         {m.reset.description}
       </p>
 
-      <form
-        noValidate
-        onSubmit={handleSubmit(submit)}
-        className="mt-6 space-y-4"
-      >
-        <Field
-          label={m.reset.fields.password}
-          htmlFor="password"
-          required
-          error={errors.password?.message}
-        >
+      <form action={formAction} className="mt-7 space-y-4">
+        {state.error && (
+          <div
+            role="alert"
+            className="flex items-start gap-2.5 p-3.5 rounded-xl bg-red-50 border border-red-100"
+          >
+            <AlertCircle
+              size={16}
+              aria-hidden="true"
+              className="text-red-500 mt-0.5 shrink-0"
+            />
+            <p className="text-xs text-red-700 leading-relaxed">{state.error}</p>
+          </div>
+        )}
+
+        <Field label={m.reset.fields.password} htmlFor="password" required>
           <Input
             id="password"
+            name="password"
             type="password"
             autoComplete="new-password"
             autoFocus
-            invalid={Boolean(errors.password)}
-            {...register('password')}
+            required
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
           />
         </Field>
 
@@ -158,12 +114,7 @@ function ResetPasswordContent() {
           <div>
             <div className="flex items-center justify-between gap-3 mb-2">
               <span className="text-xs text-slate-500">{m.reset.strength}</span>
-              <span
-                className={cn(
-                  'text-xs font-medium',
-                  TONE_TEXT[strength.tone],
-                )}
-              >
+              <span className={cn('text-xs font-medium', TEXTES[strength.tone])}>
                 {strength.label}
               </span>
             </div>
@@ -181,9 +132,7 @@ function ResetPasswordContent() {
                   key={index}
                   className={cn(
                     'h-1.5 flex-1 rounded-full transition-colors',
-                    index < strength.score
-                      ? TONE_BARS[strength.tone]
-                      : 'bg-slate-100',
+                    index < strength.score ? BARRES[strength.tone] : 'bg-slate-100',
                   )}
                 />
               ))}
@@ -214,18 +163,21 @@ function ResetPasswordContent() {
           label={m.reset.fields.confirmation}
           htmlFor="confirmation"
           required
-          error={errors.confirmation?.message}
         >
           <Input
             id="confirmation"
+            name="confirmation"
             type="password"
             autoComplete="new-password"
-            invalid={Boolean(errors.confirmation)}
-            {...register('confirmation')}
+            required
           />
         </Field>
 
-        <Button type="submit" loading={pending} className="w-full justify-center">
+        <Button
+          type="submit"
+          loading={pending}
+          className="w-full justify-center h-12"
+        >
           <KeyRound size={16} aria-hidden="true" /> {m.reset.submit}
         </Button>
       </form>
@@ -235,17 +187,5 @@ function ResetPasswordContent() {
         {m.reset.tokenNotice}
       </p>
     </Card>
-  );
-}
-
-/**
- * La lecture des paramètres d'adresse n'a lieu qu'à la requête : la frontière
- * Suspense est ce qui permet à Next de prérendre la page malgré tout.
- */
-export default function ResetPasswordPage() {
-  return (
-    <Suspense fallback={<AuthCardSkeleton />}>
-      <ResetPasswordContent />
-    </Suspense>
   );
 }

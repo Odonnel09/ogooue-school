@@ -3,8 +3,6 @@
 import { useCallback } from 'react';
 import { AUDIT_ACTION_META } from '@/types';
 import type { AuditDraft, AuditEntry } from '@/types';
-import { ROLES } from '@/data/roles';
-import { CURRENT_USER } from '@/data/academic';
 import { useSession } from '@/lib/auth/session';
 import { useSchoolData } from '@/lib/store/school-data';
 import { createId } from '@/lib/utils';
@@ -22,18 +20,17 @@ import { createId } from '@/lib/utils';
  */
 export function useAudit(): (draft: AuditDraft) => void {
   const { actions } = useSchoolData();
-  const { roleId } = useSession();
+  const { email, roleName } = useSession();
 
   return useCallback(
     (draft: AuditDraft) => {
       const meta = AUDIT_ACTION_META[draft.action];
-      const role = ROLES.find((item) => item.id === roleId);
 
       const entry: AuditEntry = {
         id: createId('aud'),
         at: new Date().toISOString(),
-        actorName: CURRENT_USER.fullName,
-        actorRole: role?.name ?? CURRENT_USER.role,
+        actorName: email,
+        actorRole: roleName,
         action: draft.action,
         domain: meta.domain,
         severity: meta.severity,
@@ -45,6 +42,6 @@ export function useAudit(): (draft: AuditDraft) => void {
 
       actions.recordAudit(entry);
     },
-    [actions, roleId],
+    [actions, email, roleName],
   );
 }

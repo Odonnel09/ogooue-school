@@ -35,5 +35,7 @@ export interface TenantMembership {
   logo: string;
   /** Rôle détenu **dans cet établissement**, pas dans la plateforme. */
   roleId: string;
+  /** Libellé du rôle, résolu côté serveur — l'interface ne le recalcule pas. */
+  roleName: string;
   status: MembershipStatus;
 }

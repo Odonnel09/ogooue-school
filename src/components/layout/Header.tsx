@@ -11,23 +11,27 @@ import {
   MessagesButton,
   NotificationBell,
 } from '@/features/notifications/components/NotificationPanel';
-import { academicYearStatusLabels, ui } from '@/i18n/fr';
-import { ROLES, useSession } from '@/lib/auth/session';
+import { academicYearStatusLabels } from '@/i18n/fr';
+import { useSession } from '@/lib/auth/session';
+import { signOut } from '@/features/auth/actions';
 import { useHref } from '@/lib/hooks';
 import { Avatar } from '@/components/ui/Avatar';
 import { ActionMenu } from '@/components/ui/Dropdown';
 import { SelectShell } from '@/components/ui/Select';
 import { TenantSwitcher } from './TenantSwitcher';
-import { useToast } from '@/components/ui/Toast';
 
 export function Header({ onOpenNav }: { onOpenNav: () => void }) {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const href = useHref();
   const router = useRouter();
-  const toast = useToast();
-  const { roleId, setRoleId, academicYear, setAcademicYearId } = useSession();
+  const { email, roleName, academicYear, setAcademicYearId } = useSession();
   const { conversations, messages } = useSchoolData();
 
+  /**
+   * La messagerie tourne encore sur le magasin en mémoire : son identifiant
+   * de participant reste celui du jeu fictif. Il deviendra `user.id` quand le
+   * module sera branché sur les tables `conversations` et `messages`.
+   */
   const unreadThreads = unreadConversations(
     conversations,
     messages,
@@ -66,24 +70,8 @@ export function Header({ onOpenNav }: { onOpenNav: () => void }) {
 
         <div className="flex-1 md:hidden" />
 
-        {/*
-          Sélecteurs de démonstration : rôle actif et année scolaire.
-          Le rôle pilote le RBAC de l'interface, l'année verrouille les écritures
-          lorsqu'elle est clôturée. Ils disparaîtront avec l'authentification réelle.
-        */}
+        {/* Année scolaire — le rôle vient désormais de l'appartenance réelle. */}
         <div className="hidden xl:flex items-center gap-2 shrink-0">
-          <div title={ui.demoRoleNotice}>
-            <SelectShell
-              variant="compact"
-              ariaLabel="Rôle de démonstration"
-              options={ROLES.map((role) => ({
-                value: role.id,
-                label: role.name,
-              }))}
-              value={roleId}
-              onSelect={setRoleId}
-            />
-          </div>
           <SelectShell
             variant="compact"
             ariaLabel="Année scolaire"
@@ -119,14 +107,12 @@ export function Header({ onOpenNav }: { onOpenNav: () => void }) {
               href={href('/account')}
               className="flex items-center gap-3 hover:opacity-80 transition-opacity"
             >
-              <Avatar name={CURRENT_USER.fullName} size="md" className="border-2 border-white shadow-sm" />
+              <Avatar name={email} size="md" className="border-2 border-white shadow-sm" />
               <span className="text-left hidden md:block">
-                <span className="block text-sm font-bold text-slate-900 leading-tight">
-                  {CURRENT_USER.name}
+                <span className="block text-sm font-bold text-slate-900 leading-tight truncate max-w-[12rem]">
+                  {email}
                 </span>
-                <span className="block text-xs text-slate-500">
-                  {CURRENT_USER.role}
-                </span>
+                <span className="block text-xs text-slate-500">{roleName}</span>
               </span>
             </Link>
             <ActionMenu
@@ -140,10 +126,11 @@ export function Header({ onOpenNav }: { onOpenNav: () => void }) {
                 {
                   label: 'Se déconnecter',
                   destructive: true,
-                  onSelect: () =>
-                    toast.info(
-                      'L’authentification réelle sera branchée à une étape ultérieure.',
-                    ),
+                  onSelect: () => {
+                    // Server Action : la session est détruite côté serveur,
+                    // pas en effaçant un cookie depuis le navigateur.
+                    void signOut();
+                  },
                 },
               ]}
             />

@@ -9,62 +9,54 @@ import {
   type ReactNode,
 } from 'react';
 import { ACADEMIC_YEARS, CURRENT_ACADEMIC_YEAR } from '@/data/academic';
-import { DEFAULT_ROLE_ID, ROLES, permissionsOfRole } from '@/data/roles';
-import { resolveMembership } from '@/lib/tenant/membership';
 import type { AcademicYear, TenantMembership } from '@/types';
 import { hasAnyPermission, hasPermission, type Permission } from './permissions';
 
 /**
- * Session simulée : rôle actif et année scolaire sélectionnée.
+ * Session de l'interface.
  *
- * ⚠️ À cette étape il n'y a **aucune authentification réelle**. Le sélecteur de
- * rôle sert à éprouver l'interface. Lors du branchement Supabase, les
- * permissions seront résolues côté serveur et injectées ici — l'API consommée
- * par les composants (`can`, `canAny`) ne changera pas.
+ * Ce fournisseur ne **calcule** plus rien : il transporte ce que le layout
+ * serveur a resolu. C'est la difference essentielle avec la version de
+ * demonstration — les permissions ne se deduisent plus d'un fichier local mais
+ * de la base, et le selecteur de role a disparu avec elle.
+ *
+ * Le controle realise ici reste **cosmetique** : il masque ce que
+ * l'utilisateur ne peut pas faire, pour ne pas divulguer la structure
+ * fonctionnelle. Ce qui refuse reellement, ce sont les politiques RLS.
  */
 interface SessionContextValue {
-  /** Établissement actif et rôle qui y est détenu. */
-  membership: TenantMembership | null;
-  roleId: string;
-  setRoleId: (roleId: string) => void;
+  email: string;
+  membership: TenantMembership;
+  memberships: TenantMembership[];
+  roleName: string;
   permissions: Permission[];
   can: (required: Permission | Permission[]) => boolean;
   canAny: (required: Permission[]) => boolean;
   academicYear: AcademicYear;
   setAcademicYearId: (id: string) => void;
-  /** Une année clôturée ou archivée est en lecture seule. */
+  /** Une annee cloturee ou archivee est en lecture seule. */
   isYearWritable: boolean;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({
-  tenantSlug,
+  membership,
+  memberships,
+  permissions,
+  email,
   children,
 }: {
-  /** Slug déjà vérifié par le layout : le provider ne le remet pas en cause. */
-  tenantSlug: string;
+  membership: TenantMembership;
+  memberships: TenantMembership[];
+  /** Resolues cote serveur par `my_permissions()`. */
+  permissions: string[];
+  email: string;
   children: ReactNode;
 }) {
-  const membership = resolveMembership(tenantSlug);
-
-  const [roleId, setRoleId] = useState(
-    () => membership?.roleId ?? DEFAULT_ROLE_ID,
-  );
   const [academicYearId, setAcademicYearId] = useState(CURRENT_ACADEMIC_YEAR);
 
-  /**
-   * Le rôle suit l'établissement : on n'est pas administrateur partout.
-   * Ajustement pendant le rendu plutôt qu'effet — le sélecteur de rôle de
-   * démonstration reste libre ensuite, pour éprouver l'interface.
-   */
-  const [lastSlug, setLastSlug] = useState(tenantSlug);
-  if (lastSlug !== tenantSlug) {
-    setLastSlug(tenantSlug);
-    setRoleId(membership?.roleId ?? DEFAULT_ROLE_ID);
-  }
-
-  const permissions = useMemo(() => permissionsOfRole(roleId), [roleId]);
+  const granted = useMemo(() => permissions as Permission[], [permissions]);
 
   const academicYear = useMemo(
     () =>
@@ -74,29 +66,30 @@ export function SessionProvider({
   );
 
   const can = useCallback(
-    (required: Permission | Permission[]) =>
-      hasPermission(permissions, required),
-    [permissions],
+    (required: Permission | Permission[]) => hasPermission(granted, required),
+    [granted],
   );
 
   const canAny = useCallback(
-    (required: Permission[]) => hasAnyPermission(permissions, required),
-    [permissions],
+    (required: Permission[]) => hasAnyPermission(granted, required),
+    [granted],
   );
 
   const value = useMemo<SessionContextValue>(
     () => ({
+      email,
       membership,
-      roleId,
-      setRoleId,
-      permissions,
+      memberships,
+      roleName: membership.roleName,
+      permissions: granted,
       can,
       canAny,
       academicYear,
       setAcademicYearId,
-      isYearWritable: academicYear.status === 'active' || academicYear.status === 'draft',
+      isYearWritable:
+        academicYear.status === 'active' || academicYear.status === 'draft',
     }),
-    [membership, roleId, permissions, can, canAny, academicYear],
+    [email, membership, memberships, granted, can, canAny, academicYear],
   );
 
   return (
@@ -107,7 +100,9 @@ export function SessionProvider({
 export function useSession(): SessionContextValue {
   const context = useContext(SessionContext);
   if (!context) {
-    throw new Error('useSession doit être utilisé à l’intérieur de <SessionProvider>.');
+    throw new Error(
+      'useSession doit etre utilise a l\u2019interieur de <SessionProvider>.',
+    );
   }
   return context;
 }
@@ -119,13 +114,13 @@ export function usePermissions() {
 }
 
 /**
- * Masque son contenu si la permission n'est pas accordée.
- * On **masque** plutôt qu'on ne désactive, pour ne pas divulguer la structure
- * fonctionnelle à un utilisateur qui n'y a pas droit.
+ * Masque son contenu si la permission n'est pas accordee.
+ * On **masque** plutot qu'on ne desactive, pour ne pas divulguer la structure
+ * fonctionnelle a un utilisateur qui n'y a pas droit.
  */
 export function Can({
   permission,
-  /** Exige aussi que l'année scolaire sélectionnée soit modifiable. */
+  /** Exige aussi que l'annee scolaire selectionnee soit modifiable. */
   requiresWritableYear = false,
   fallback = null,
   children,
@@ -142,5 +137,3 @@ export function Can({
 
   return <>{children}</>;
 }
-
-export { ROLES };

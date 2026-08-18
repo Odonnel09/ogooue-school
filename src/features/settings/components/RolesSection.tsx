@@ -19,7 +19,7 @@ import { settingsMessages as m } from '../messages';
 import { SettingsSection } from './SettingsSection';
 
 export function RolesSection() {
-  const { roleId } = useSession();
+  const { membership } = useSession();
 
   return (
     <SettingsSection title={m.roles.title} description={m.roles.description}>
@@ -28,7 +28,7 @@ export function RolesSection() {
           <Card key={role.id} className="p-4 sm:p-5">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-sm font-bold text-slate-900">{role.name}</h2>
-              {role.id === roleId && (
+              {role.id === membership.roleId && (
                 <Badge tone="brand" dot>
                   Actif
                 </Badge>

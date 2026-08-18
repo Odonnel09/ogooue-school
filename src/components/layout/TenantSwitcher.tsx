@@ -3,10 +3,8 @@
 import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { Check, ChevronDown, Info } from 'lucide-react';
-import { MEMBERSHIPS } from '@/data/memberships';
 import { MEMBERSHIP_STATUS_TONES } from '@/types';
-import { ROLES } from '@/data/roles';
-import { useTenant } from '@/lib/hooks';
+import { useSession } from '@/lib/auth/session';
 import { cn } from '@/lib/utils';
 import { Badge, PopoverPanel } from '@/components/ui';
 
@@ -26,12 +24,12 @@ import { Badge, PopoverPanel } from '@/components/ui';
  *    son adresse à la main : le layout le vérifie avant tout rendu.
  */
 export function TenantSwitcher() {
-  const slug = useTenant();
+  const { membership, memberships } = useSession();
+  const slug = membership.slug;
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
 
-  const current = MEMBERSHIPS.find((membership) => membership.slug === slug);
-  if (!current) return null;
+  const current = membership;
 
   return (
     <>
@@ -88,17 +86,16 @@ export function TenantSwitcher() {
             Vos établissements
           </h2>
           <p className="text-[11px] text-slate-500 mt-0.5">
-            {MEMBERSHIPS.length} appartenance
-            {MEMBERSHIPS.length > 1 ? 's' : ''} — le rôle change avec
+            {memberships.length} appartenance
+            {memberships.length > 1 ? 's' : ''} — le rôle change avec
             l’établissement.
           </p>
         </div>
 
         <ul className="flex-1 overflow-y-auto p-1.5">
-          {MEMBERSHIPS.map((membership) => {
+          {memberships.map((membership) => {
             const isCurrent = membership.slug === slug;
             const accessible = membership.status === 'active';
-            const role = ROLES.find((item) => item.id === membership.roleId);
 
             const content = (
               <>
@@ -133,7 +130,7 @@ export function TenantSwitcher() {
                     {membership.city} · {membership.type}
                   </span>
                   <span className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                    <Badge tone="slate">{role?.name ?? 'Rôle inconnu'}</Badge>
+                    <Badge tone="slate">{membership.roleName}</Badge>
                     {!accessible && (
                       <Badge tone={MEMBERSHIP_STATUS_TONES[membership.status]}>
                         Invitation en attente

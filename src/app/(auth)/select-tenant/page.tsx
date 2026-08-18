@@ -1,35 +1,40 @@
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, Building2, MailQuestion } from 'lucide-react';
-import { MEMBERSHIPS } from '@/data/memberships';
-import { ROLES } from '@/data/roles';
+import { getMemberships, getUser } from '@/lib/auth/server';
+import { signOut } from '@/features/auth/actions';
 import { Badge, Card } from '@/components/ui';
 import { authMessages as m } from '@/features/auth/messages';
 
 /**
  * Choix de l'établissement après connexion.
  *
- * Composant **serveur** : la liste des appartenances vient de la session, pas
- * du navigateur. C'est le pendant naturel de la vérification faite dans le
- * layout de l'espace établissement — ici on propose, là on vérifie, et la
- * seconde ne fait jamais confiance à la première.
- *
- * REMPLACEMENT SUPABASE : `select ... from memberships join tenants` filtré
- * par l'utilisateur authentifié.
+ * Composant **serveur** : la liste vient de la base, filtrée par les
+ * politiques RLS pour l'utilisateur de la session. C'est le pendant de la
+ * vérification faite dans le layout de l'espace établissement — ici on
+ * propose, là on vérifie, et la seconde ne fait jamais confiance à la
+ * première.
  */
-export default function SelectTenantPage() {
-  const active = MEMBERSHIPS.filter(
-    (membership) => membership.status === 'active',
-  );
-  const pending = MEMBERSHIPS.filter(
-    (membership) => membership.status !== 'active',
-  );
+export default async function SelectTenantPage() {
+  const user = await getUser();
+  if (!user) redirect('/login');
+
+  const memberships = await getMemberships();
+  const active = memberships.filter((item) => item.status === 'active');
+  const pending = memberships.filter((item) => item.status !== 'active');
+
+  // Une seule appartenance : choisir n'aurait aucun sens.
+  if (active.length === 1 && pending.length === 0) {
+    redirect(`/${active[0].slug}/dashboard`);
+  }
 
   return (
     <Card className="p-6 sm:p-8">
       <h1 className="text-xl font-bold text-slate-900">{m.select.title}</h1>
       <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-        {m.select.description}
+        {active.length > 1 ? m.select.description : m.select.single}
       </p>
+      <p className="text-xs text-slate-400 mt-2">{user.email}</p>
 
       {active.length === 0 ? (
         <div className="mt-6 text-center py-8">
@@ -45,43 +50,39 @@ export default function SelectTenantPage() {
         </div>
       ) : (
         <ul className="mt-6 space-y-2">
-          {active.map((membership) => {
-            const role = ROLES.find((item) => item.id === membership.roleId);
-
-            return (
-              <li key={membership.tenantId}>
-                <Link
-                  href={`/${membership.slug}/dashboard`}
-                  className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:border-brand-200 hover:bg-brand-50/40 transition-colors outline-none focus-visible:ring-4 focus-visible:ring-brand-500/20"
+          {active.map((membership) => (
+            <li key={membership.tenantId}>
+              <Link
+                href={`/${membership.slug}/dashboard`}
+                className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:border-brand-200 hover:bg-brand-50/40 transition-colors outline-none focus-visible:ring-4 focus-visible:ring-brand-500/20"
+              >
+                <span
+                  aria-hidden="true"
+                  className="w-11 h-11 rounded-xl bg-slate-50 flex items-center justify-center text-xl shrink-0"
                 >
-                  <span
-                    aria-hidden="true"
-                    className="w-11 h-11 rounded-xl bg-slate-50 flex items-center justify-center text-xl shrink-0"
-                  >
-                    {membership.logo}
-                  </span>
+                  {membership.logo}
+                </span>
 
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold text-slate-900 truncate">
-                      {membership.name}
-                    </span>
-                    <span className="block text-xs text-slate-500 truncate">
-                      {membership.city} · {membership.type}
-                    </span>
-                    <span className="inline-flex mt-1.5">
-                      <Badge tone="slate">{role?.name ?? 'Rôle inconnu'}</Badge>
-                    </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-slate-900 truncate">
+                    {membership.name}
                   </span>
+                  <span className="block text-xs text-slate-500 truncate">
+                    {membership.city} · {membership.type}
+                  </span>
+                  <span className="inline-flex mt-1.5">
+                    <Badge tone="slate">{membership.roleName}</Badge>
+                  </span>
+                </span>
 
-                  <ArrowRight
-                    size={16}
-                    aria-hidden="true"
-                    className="text-slate-300 shrink-0"
-                  />
-                </Link>
-              </li>
-            );
-          })}
+                <ArrowRight
+                  size={16}
+                  aria-hidden="true"
+                  className="text-slate-300 shrink-0"
+                />
+              </Link>
+            </li>
+          ))}
         </ul>
       )}
 
@@ -125,14 +126,14 @@ export default function SelectTenantPage() {
         </div>
       )}
 
-      <div className="mt-6 pt-5 border-t border-slate-100 text-center">
-        <Link
-          href="/login"
+      <form action={signOut} className="mt-6 pt-5 border-t border-slate-100 text-center">
+        <button
+          type="submit"
           className="text-sm text-slate-500 hover:text-slate-900 transition-colors rounded outline-none focus-visible:ring-4 focus-visible:ring-brand-500/20"
         >
           {m.select.logout}
-        </Link>
-      </div>
+        </button>
+      </form>
     </Card>
   );
 }
