@@ -1,5 +1,6 @@
 import type { Database } from './database.types';
 import type {
+  AuditEntry,
   Guardian,
   GuardianLink,
   SchoolClass,
@@ -103,5 +104,32 @@ export function toGuardianLink(
     relation: row.relation as GuardianLink['relation'],
     isPrimary: row.is_primary,
     canPickUp: row.can_pick_up,
+  };
+}
+
+/**
+ * Une trace d'audit.
+ *
+ * `action`, `domain` et `severity` sont stockés en texte libre côté base — la
+ * table est append-only et doit accepter des actions qu'une version future
+ * ajouterait, sans migration. La conversion vers l'union TypeScript est donc
+ * une assertion, assumée : une trace inconnue s'affichera avec sa clé brute
+ * plutôt que de faire échouer la page entière.
+ */
+export function toAuditEntry(
+  row: Tables['audit_logs']['Row'],
+): AuditEntry {
+  return {
+    id: row.id,
+    at: row.at,
+    actorName: row.actor_name,
+    actorRole: row.actor_role,
+    action: row.action as AuditEntry['action'],
+    domain: row.domain as AuditEntry['domain'],
+    severity: row.severity === 'sensitive' ? 'sensitive' : 'info',
+    resourceType: row.resource_type,
+    resourceId: row.resource_id,
+    resourceLabel: row.resource_label,
+    detail: row.detail,
   };
 }
